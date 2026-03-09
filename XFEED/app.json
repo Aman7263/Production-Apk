@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "XFEED_theamrey",
+    "slug": "theamrey",
+    "scheme": "theamrey",
+    "version": "1.0.0",
+    "orientation": "portrait",
+
+    "icon": "./assets/my-avatar.png",
+
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+
+    "splash": {
+      "image": "./assets/my-avatar.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.verseyanosorganization.theamrey",
+      "icon": "./assets/my-avatar.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/my-avatar.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.verseyanosorganization.theamrey"
+    },
+
+    "web": {
+      "favicon": "./assets/my-avatar.png"
+    },
+
+    "plugins": [
+      "expo-web-browser"
+    ],
+
+    "extra": {
+      "eas": {
+        "projectId": "38c135a2-306c-402e-a931-d1ab53e375c2"
+      }
+    },
+
+    "owner": "verseyanos-organization"
+  }
+}
