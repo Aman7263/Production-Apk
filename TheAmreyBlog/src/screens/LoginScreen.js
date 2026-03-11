@@ -82,7 +82,7 @@ export default function LoginScreen({ navigation }) {
             { fontSize: 30, fontWeight: 'bold', textAlign: 'center', marginBottom: 25 }
           ]}
         >
-          XFEED_TheAmrey ✨
+          TheAmreyBlog ✨
         </Text>
 
         <TextInput

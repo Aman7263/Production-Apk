@@ -1,5 +1,5 @@
 import React from 'react';
-import { ThemeProvider } from './src/components/ThemeContext';
+import { ThemeProvider } from './src/Theme/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
