@@ -1,16 +1,16 @@
 import React, { useContext } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { ThemeContext } from "../components/ThemeContext";
+import { useTheme } from '../Theme/ThemeContext';
 
 export default function LocationMap() {
-  const { themeStyle } = useContext(ThemeContext);
+  const { theme  } = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: themeStyle.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: themeStyle.text }]}>User Marked Locations</Text>
-        <View style={[styles.card, { backgroundColor: themeStyle.card }]}>
-          <Text style={{ color: themeStyle.text }}>You Tagged: New Delhi, India</Text>
+        <Text style={[styles.title, { color: theme.text }]}>User Marked Locations</Text>
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          <Text style={{ color: theme.text }}>You Tagged: New Delhi, India</Text>
         </View>
       </ScrollView>
     </View>

@@ -1,14 +1,14 @@
 import React, { useContext } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { ThemeContext } from "../components/ThemeContext";
+import { useTheme } from '../Theme/ThemeContext';
 
 export default function ShareLocation() {
-  const { themeStyle } = useContext(ThemeContext);
+  const { theme  } = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: themeStyle.background, justifyContent: 'center', alignItems: 'center' }}>
-      <View style={[styles.statusBox, { backgroundColor: themeStyle.card }]}>
-        <Text style={{ color: themeStyle.text, fontSize: 18 }}>📡 Location Sharing is Active</Text>
+    <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={[styles.statusBox, { backgroundColor: theme.card }]}>
+        <Text style={{ color: theme.text, fontSize: 18 }}>📡 Location Sharing is Active</Text>
       </View>
     </View>
   );

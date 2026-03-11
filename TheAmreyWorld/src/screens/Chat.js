@@ -1,10 +1,12 @@
 import React, { useState, useContext, useEffect } from "react";
 import { View, TextInput, TouchableOpacity, Text, FlatList, StyleSheet } from "react-native";
-import { ThemeContext } from "../components/ThemeContext";
+import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from "../config/supabase";
+import { LinearGradient } from 'expo-linear-gradient';
+import GlassCard from '../components/GlassCard';
 
 export default function Chat() {
-  const { themeStyle } = useContext(ThemeContext);
+  const { theme  } = useTheme();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
@@ -27,30 +29,42 @@ export default function Chat() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: themeStyle.background }}>
+    <LinearGradient 
+      colors={[theme.gradientStart, theme.gradientEnd]}
+      style={{ flex: 1 }}>
       <FlatList
         data={messages}
         renderItem={({ item }) => (
-          <View style={[styles.bubble, { backgroundColor: themeStyle.card }]}>
-            <Text style={{ color: themeStyle.text }}>{item.content}</Text>
-          </View>
+          <GlassCard style={styles.bubble} tint="light" intensity={40}>
+            <Text style={{ color: theme.text, fontSize: 16 }}>{item.content}</Text>
+          </GlassCard>
         )}
         keyExtractor={(item) => item.id.toString()}
         style={{ flex: 1, padding: 10 }}
       />
-      <View style={[styles.inputArea, { borderTopWidth: 1, borderTopColor: themeStyle.footer }]}>
+      <GlassCard 
+        intensity={60} 
+        style={[
+          styles.inputArea, 
+          { 
+            borderRadius: 0,
+            borderTopWidth: 1, 
+            borderTopColor: theme.glow,
+            backgroundColor: theme.header 
+          }
+        ]}>
         <TextInput 
           value={message} 
           onChangeText={setMessage} 
-          style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.primary }]} 
+          style={[styles.input, { color: theme.text, borderColor: theme.glow }]} 
           placeholder="Type to partner..."
           placeholderTextColor="#999"
         />
         <TouchableOpacity onPress={sendToPartner} style={styles.btn}>
-          <Text style={{ color: themeStyle.primary, fontWeight: "bold" }}>Send</Text>
+          <Text style={{ color: theme.glow, fontWeight: "bold", textShadowColor: theme.glow, textShadowRadius: 10 }}>Send</Text>
         </TouchableOpacity>
-      </View>
-    </View>
+      </GlassCard>
+    </LinearGradient>
   );
 }
 

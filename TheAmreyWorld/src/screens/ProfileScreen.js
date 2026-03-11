@@ -10,11 +10,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { ThemeContext } from "../components/ThemeContext";
+import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from "../config/supabase";
 
 export default function ProfileScreen({ navigation }) {
-  const { themeStyle } = useContext(ThemeContext);
+  const { theme  } = useTheme();
 
   const [user, setUser] = useState(null);
   const [profilePic, setProfilePic] = useState(null);
@@ -156,7 +156,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: themeStyle.background, padding: 25 }}>
+    <View style={{ flex: 1, backgroundColor: theme.background, padding: 25 }}>
       <TouchableOpacity onPress={pickImage} style={styles.profilePicWrapper}>
         {profilePic ? (
           <Image source={{ uri: profilePic }} style={styles.profilePic} />
@@ -167,50 +167,50 @@ export default function ProfileScreen({ navigation }) {
         )}
       </TouchableOpacity>
 
-      <View style={[styles.profileCard, { backgroundColor: themeStyle.card }]}>
-        <Text style={[styles.label, { color: themeStyle.text }]}>Name</Text>
+      <View style={[styles.profileCard, { backgroundColor: theme.card }]}>
+        <Text style={[styles.label, { color: theme.text }]}>Name</Text>
         <TextInput
-          style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.primary }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.primary }]}
           value={name}
           onChangeText={setName}
           placeholder="Enter your name"
-          placeholderTextColor={themeStyle.text + "99"}
+          placeholderTextColor={theme.text + "99"}
         />
 
-        <Text style={[styles.label, { color: themeStyle.text }]}>Password</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Password</Text>
         <TextInput
-          style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.primary }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.primary }]}
           value={password}
           onChangeText={setPassword}
           placeholder="Enter new password"
-          placeholderTextColor={themeStyle.text + "99"}
+          placeholderTextColor={theme.text + "99"}
           secureTextEntry
         />
 
-        <Text style={[styles.label, { color: themeStyle.text }]}>Partner ID</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Partner ID</Text>
         <TextInput
-          style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.primary }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.primary }]}
           value={partnerID}
           onChangeText={setPartnerID}
           placeholder="Enter Partner ID"
-          placeholderTextColor={themeStyle.text + "99"}
+          placeholderTextColor={theme.text + "99"}
         />
 
         {partnerID !== "" && (
-          <Text style={{ marginTop: 5, color: themeStyle.text, opacity: 0.8 }}>
+          <Text style={{ marginTop: 5, color: theme.text, opacity: 0.8 }}>
             Partner Name: {partnerName}
           </Text>
         )}
 
-        <Text style={[styles.label, { color: themeStyle.text, marginTop: 15 }]}>Email</Text>
-        <Text style={{ color: themeStyle.text, fontSize: 18 }}>{email}</Text>
+        <Text style={[styles.label, { color: theme.text, marginTop: 15 }]}>Email</Text>
+        <Text style={{ color: theme.text, fontSize: 18 }}>{email}</Text>
       </View>
 
-      <TouchableOpacity style={[styles.button, { backgroundColor: themeStyle.primary }]} onPress={handleSaveChanges} disabled={loading}>
+      <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={handleSaveChanges} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save Changes</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.button, { backgroundColor: themeStyle.primary, marginTop: 10 }]} onPress={goToPaymentHistory}>
+      <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary, marginTop: 10 }]} onPress={goToPaymentHistory}>
         <Text style={styles.buttonText}>Payment History</Text>
       </TouchableOpacity>
 

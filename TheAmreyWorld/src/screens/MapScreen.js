@@ -13,11 +13,11 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../config/supabase";
-import { ThemeContext } from "../components/ThemeContext";
+import { useTheme } from '../Theme/ThemeContext';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function MapScreen() {
-  const { themeStyle } = useContext(ThemeContext);
+  const { theme  } = useTheme();
   const [markers, setMarkers] = useState([]);
   const [tempMarker, setTempMarker] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -169,9 +169,9 @@ export default function MapScreen() {
       {/* Modal Bottom Sheet */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: themeStyle.background }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
             <ScrollView>
-              <Text style={[styles.title, { color: themeStyle.text }]}>
+              <Text style={[styles.title, { color: theme.text }]}>
                 Tagging as: {currentPartner?.name}
               </Text>
 
@@ -180,31 +180,31 @@ export default function MapScreen() {
                 placeholderTextColor="#888"
                 value={formData.tag_name}
                 onChangeText={(t) => setFormData({ ...formData, tag_name: t })}
-                style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.footer }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.footer }]}
               />
               <TextInput
                 placeholder="Description"
                 placeholderTextColor="#888"
                 value={formData.description}
                 onChangeText={(t) => setFormData({ ...formData, description: t })}
-                style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.footer }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.footer }]}
               />
               <TextInput
                 placeholder="Category"
                 placeholderTextColor="#888"
                 value={formData.category}
                 onChangeText={(t) => setFormData({ ...formData, category: t })}
-                style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.footer }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.footer }]}
               />
               <TextInput
                 placeholder="Partner Name"
                 placeholderTextColor="#888"
                 value={formData.partner_name}
                 onChangeText={(t) => setFormData({ ...formData, partner_name: t })}
-                style={[styles.input, { color: themeStyle.text, borderColor: themeStyle.footer }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.footer }]}
               />
 
-              <Text style={{ color: themeStyle.text, marginBottom: 5 }}>Expected Visit Date</Text>
+              <Text style={{ color: theme.text, marginBottom: 5 }}>Expected Visit Date</Text>
               <DateTimePicker
                 value={formData.expected_visit}
                 mode="date"
@@ -212,7 +212,7 @@ export default function MapScreen() {
                 onChange={(event, date) => date && setFormData({ ...formData, expected_visit: date })}
               />
 
-              <Text style={{ color: themeStyle.text, marginBottom: 5 }}>Completed Date</Text>
+              <Text style={{ color: theme.text, marginBottom: 5 }}>Completed Date</Text>
               <DateTimePicker
                 value={formData.completed_date || new Date()}
                 mode="date"

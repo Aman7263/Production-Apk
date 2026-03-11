@@ -1,24 +1,28 @@
 import React, { useContext } from 'react';
 import { View, Text } from 'react-native';
-import { ThemeContext } from '../components/ThemeContext';
+import { BlurView } from 'expo-blur';
+import { useTheme } from '../Theme/ThemeContext';
+import GradientText from './GradientText';
 
 export default function Footer() {
-  const { themeStyle } = useContext(ThemeContext);
+  const { theme  } = useTheme();
 
   return (
-    <View style={{
+    <BlurView intensity={80} tint="dark" style={{
       height: 60,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: themeStyle.footer
+      backgroundColor: theme.footer,
+      borderTopWidth: 1,
+      borderTopColor: theme.glow,
+      elevation: 10
     }}>
-      <Text style={{
-        color: themeStyle.text,
+      <GradientText style={{
         fontWeight: 'bold',
-        fontSize: 14
+        fontSize: 14,
       }}>
         My love for Amrey 💙
-      </Text>
-    </View>
+      </GradientText>
+    </BlurView>
   );
 }
