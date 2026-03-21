@@ -1,10 +1,30 @@
-import React from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native"
+import React, { useEffect } from "react"
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert } from "react-native"
 import { GlobalStyles, ThemeColors } from "../theme"
+import { supabase } from "../service/supabase"
 
 const { width } = Dimensions.get("window")
 
 export default function Dashboard({ navigation }) {
+
+    useEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (
+                <TouchableOpacity onPress={() => {
+                    Alert.alert(
+                        "Logout",
+                        "Are you sure you want to log out?",
+                        [
+                            { text: "Cancel", style: "cancel" },
+                            { text: "Logout", onPress: () => supabase.auth.signOut(), style: "destructive" }
+                        ]
+                    );
+                }}>
+                    <Text style={{ color: ThemeColors.danger, fontWeight: '600', marginRight: 15 }}>Logout</Text>
+                </TouchableOpacity>
+            )
+        });
+    }, [navigation]);
 
     const data = [
         { title: "Clothes", table: "cloths", icon: "👕" },
