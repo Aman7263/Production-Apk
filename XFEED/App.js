@@ -8,6 +8,7 @@ import { StyleSheet, View } from "react-native"
 import Dashboard from "./src/screens/Dashboard"
 import Products from "./src/screens/Products"
 import Admin from "./src/screens/Admin"
+import AddProduct from "./src/screens/AddProduct"
 
 const Stack = createNativeStackNavigator()
 
@@ -46,6 +47,7 @@ export default function App() {
           <Stack.Screen name="Dashboard" component={Dashboard} />
           <Stack.Screen name="Products" component={Products} />
           <Stack.Screen name="Admin" component={Admin} />
+          <Stack.Screen name="AddProduct" component={AddProduct} />
 
         </Stack.Navigator>
 

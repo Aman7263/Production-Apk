@@ -5,7 +5,7 @@ export async function getProducts(table, category = null, offset = 0) {
     let query = supabase
         .from(table)
         .select("*")
-        .range(offset, offset + 49)
+        .range(offset, offset + 20)
 
     if (category) {
         query = query.eq("category", category)
@@ -24,9 +24,9 @@ export async function updateStock(table, id, currentStock) {
 
 }
 
-export async function createOrder(email, product_id, category, user) {
+export async function createOrder(email, product_id, item_name, qty, category, user, images) {
 
-    await supabase
+    const { error } = await supabase
         .from("order_details")
         .insert([
             {
@@ -34,10 +34,17 @@ export async function createOrder(email, product_id, category, user) {
                 product_id: product_id,
                 category: category,
                 user_name: user,
-                status: "pending"
+                item_name: item_name, // ✅ NEW
+                qty: qty,             // ✅ NEW
+                status: "pending",
+                images: images
             }
         ])
 
+    if (error) {
+        console.log("Order Error:", error)
+        throw error
+    }
 }
 
 export async function getOrders(status) {

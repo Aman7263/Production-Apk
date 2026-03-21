@@ -9,6 +9,9 @@ stock_left int,
 return_policy text
 );
 
+alter table cloths
+add column images text[];
+
 INSERT INTO cloths (item, category, description, actual_price, offer_price, stock_left, return_policy)
 VALUES
 ('T-Shirt', 'Men', 'Cotton round neck t-shirt', 800, 499, 50, '7 days return'),
@@ -28,6 +31,9 @@ offer_price numeric,
 stock_left int,
 return_policy text
 );
+
+alter table grocery
+add column images text[];
 
 INSERT INTO grocery (item, category, description, actual_price, offer_price, stock_left, return_policy)
 VALUES
@@ -49,6 +55,9 @@ stock_left int,
 return_policy text
 );
 
+alter table daily_essential
+add column images text[];
+
 INSERT INTO daily_essential (item, category, description, actual_price, offer_price, stock_left, return_policy)
 VALUES
 ('Toothpaste', 'Personal Care', 'Mint fresh toothpaste', 120, 99, 100, 'No return'),
@@ -69,6 +78,10 @@ status text default 'pending',
 created_at timestamp default now()
 );
 
+ALTER TABLE order_details
+ADD COLUMN item_name text,
+ADD COLUMN qty int;
+
 INSERT INTO order_details (email, product_id, category, user_name, status)
 VALUES
 ('user1@example.com', 1, 'cloths', 'Amit Sharma', 'pending'),
@@ -76,3 +89,17 @@ VALUES
 ('user3@example.com', 3, 'daily_essential', 'Rahul Singh', 'pending'),
 ('user4@example.com', 4, 'cloths', 'Neha Gupta', 'shipped'),
 ('user5@example.com', 5, 'grocery', 'Vikas Kumar', 'cancelled');
+
+--------------------------------------------
+-- Allow anyone to upload
+create policy "Allow upload"
+on storage.objects
+for insert
+to public
+with check (bucket_id = 'products');
+
+create policy "Allow read"
+on storage.objects
+for select
+to public
+using (bucket_id = 'products');
