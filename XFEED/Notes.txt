@@ -1,0 +1,78 @@
+create table cloths (
+id bigint primary key generated always as identity,
+item text,
+category text,
+description text,
+actual_price numeric,
+offer_price numeric,
+stock_left int,
+return_policy text
+);
+
+INSERT INTO cloths (item, category, description, actual_price, offer_price, stock_left, return_policy)
+VALUES
+('T-Shirt', 'Men', 'Cotton round neck t-shirt', 800, 499, 50, '7 days return'),
+('Jeans', 'Men', 'Slim fit blue jeans', 2000, 1499, 30, '10 days return'),
+('Kurti', 'Women', 'Printed casual kurti', 1200, 899, 40, '7 days return'),
+('Saree', 'Women', 'Silk festive saree', 5000, 3999, 20, 'No return'),
+('Jacket', 'Unisex', 'Winter warm jacket', 3000, 2499, 25, '5 days return');
+
+--------------------------------------------
+create table grocery (
+id bigint primary key generated always as identity,
+item text,
+category text,
+description text,
+actual_price numeric,
+offer_price numeric,
+stock_left int,
+return_policy text
+);
+
+INSERT INTO grocery (item, category, description, actual_price, offer_price, stock_left, return_policy)
+VALUES
+('Rice 5kg', 'Grains', 'Premium basmati rice', 600, 550, 100, 'No return'),
+('Wheat Flour', 'Grains', 'Whole wheat atta 10kg', 450, 420, 80, 'No return'),
+('Sugar 1kg', 'Sweeteners', 'Refined sugar', 50, 45, 200, 'No return'),
+('Cooking Oil 1L', 'Oil', 'Sunflower oil', 180, 160, 150, 'No return'),
+('Salt 1kg', 'Spices', 'Iodized salt', 25, 20, 300, 'No return');
+
+--------------------------------------------
+create table daily_essential (
+id bigint primary key generated always as identity,
+item text,
+category text,
+description text,
+actual_price numeric,
+offer_price numeric,
+stock_left int,
+return_policy text
+);
+
+INSERT INTO daily_essential (item, category, description, actual_price, offer_price, stock_left, return_policy)
+VALUES
+('Toothpaste', 'Personal Care', 'Mint fresh toothpaste', 120, 99, 100, 'No return'),
+('Shampoo', 'Personal Care', 'Anti-dandruff shampoo', 300, 250, 60, 'No return'),
+('Soap Pack', 'Personal Care', 'Pack of 4 bathing soaps', 200, 170, 90, 'No return'),
+('Detergent', 'Cleaning', 'Washing powder 2kg', 350, 299, 70, 'No return'),
+('Dishwash Liquid', 'Cleaning', 'Lemon dishwash liquid', 150, 130, 80, 'No return');
+
+--------------------------------------------
+create table order_details (
+
+id bigint primary key generated always as identity,
+email text,
+product_id bigint,
+category text,
+user_name text,
+status text default 'pending',
+created_at timestamp default now()
+);
+
+INSERT INTO order_details (email, product_id, category, user_name, status)
+VALUES
+('user1@example.com', 1, 'cloths', 'Amit Sharma', 'pending'),
+('user2@example.com', 2, 'grocery', 'Priya Verma', 'completed'),
+('user3@example.com', 3, 'daily_essential', 'Rahul Singh', 'pending'),
+('user4@example.com', 4, 'cloths', 'Neha Gupta', 'shipped'),
+('user5@example.com', 5, 'grocery', 'Vikas Kumar', 'cancelled');
