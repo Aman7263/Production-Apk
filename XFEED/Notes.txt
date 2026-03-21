@@ -80,7 +80,8 @@ created_at timestamp default now()
 
 ALTER TABLE order_details
 ADD COLUMN item_name text,
-ADD COLUMN qty int;
+ADD COLUMN qty int,
+ADD COLUMN images text[];
 
 INSERT INTO order_details (email, product_id, category, user_name, status)
 VALUES
