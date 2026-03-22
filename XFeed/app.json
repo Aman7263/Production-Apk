@@ -1,29 +1,37 @@
 {
   "expo": {
     "name": "XFeed",
+    "owner": "verseyanos-organization",
     "slug": "XFeed",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/xfeed.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/xfeed.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.verseyanos.xfeed"
     },
     "android": {
+      "package": "com.verseyanos.xfeed",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/xfeed.png",
+        "backgroundImage": "./assets/xfeed.png",
+        "monochromeImage": "./assets/xfeed.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/xfeed.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "96c9c40d-330b-4378-972e-10995b0bd8bc"
+      }
     }
   }
 }
