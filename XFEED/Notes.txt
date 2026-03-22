@@ -104,3 +104,21 @@ on storage.objects
 for select
 to public
 using (bucket_id = 'products');
+
+--------------------------------------------
+-- 1. Create the user_roles table
+CREATE TABLE IF NOT EXISTS user_roles (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    role_id TEXT NOT NULL DEFAULT '0512'
+);
+
+-- 2. Allow reading from the table (so the app can check roles)
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access to user_roles" 
+ON user_roles FOR SELECT 
+USING (true);
+
+-- 3. Run this sequentially afterwards to give yourself admin superpowers:
+INSERT INTO user_roles (email, role_id) VALUES ('aman@gmail.com', '1618');
+INSERT INTO user_roles (email, role_id) VALUES ('aryan@gmail.com', '0512');

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert } from "react-native"
 import { GlobalStyles, ThemeColors } from "../theme"
 import { supabase } from "../service/supabase"
@@ -7,7 +7,10 @@ const { width } = Dimensions.get("window")
 
 export default function Dashboard({ navigation }) {
 
+    const [role, setRole] = useState("0512")
+
     useEffect(() => {
+        fetchRole()
         navigation.setOptions({
             headerRight: () => (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -33,6 +36,21 @@ export default function Dashboard({ navigation }) {
             )
         });
     }, [navigation]);
+
+    async function fetchRole() {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user?.email) {
+            const { data } = await supabase
+                .from("user_roles")
+                .select("role_id")
+                .eq("email", session.user.email)
+                .single()
+            
+            if (data?.role_id) {
+                setRole(data.role_id)
+            }
+        }
+    }
 
     const data = [
         { title: "Clothes", table: "cloths", icon: "👕" },
@@ -61,15 +79,17 @@ export default function Dashboard({ navigation }) {
                 ))}
             </View>
 
-            <TouchableOpacity
-                style={styles.adminWrapper}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate("Admin")}
-            >
-                <View style={[GlobalStyles.glassCard, styles.admin]}>
-                    <Text style={styles.adminText}>ADMIN PORTAL</Text>
-                </View>
-            </TouchableOpacity>
+            {role === "1618" && (
+                <TouchableOpacity
+                    style={styles.adminWrapper}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate("Admin")}
+                >
+                    <View style={[GlobalStyles.glassCard, styles.admin]}>
+                        <Text style={styles.adminText}>ADMIN PORTAL</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
 
         </View>
 
@@ -100,7 +120,7 @@ const styles = StyleSheet.create({
         padding: 15,
         backgroundColor: "rgba(255, 255, 255, 0.05)",
     },
-    
+
     icon: {
         fontSize: 40,
         marginBottom: 10,
@@ -129,7 +149,7 @@ const styles = StyleSheet.create({
         borderColor: ThemeColors.primary,
         overflow: "hidden", // Required for Android border radius on GlassView
     },
-    
+
     adminText: {
         color: ThemeColors.text,
         fontWeight: "bold",

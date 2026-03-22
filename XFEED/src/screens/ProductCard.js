@@ -14,7 +14,7 @@ import ProductDetailsModal from "./ProductModal"
 
 const { width } = Dimensions.get("window")
 
-export default function ProductCard({ item, onAdd }) {
+export default function ProductCard({ item, onAdd, isAdmin, onMarkOutOfStock }) {
 
     const [open, setOpen] = useState(false)
     const [qty, setQty] = useState(1)
@@ -163,6 +163,18 @@ export default function ProductCard({ item, onAdd }) {
                     </TouchableOpacity>
 
                 </View>
+
+                {isAdmin && !isOutOfStock && (
+                    <TouchableOpacity
+                        style={styles.adminCloseBtn}
+                        onPress={(e) => {
+                            e.stopPropagation()
+                            onMarkOutOfStock(item)
+                        }}
+                    >
+                        <Text style={styles.adminCloseText}>Close Product</Text>
+                    </TouchableOpacity>
+                )}
 
             </TouchableOpacity>
 
@@ -321,5 +333,21 @@ const styles = StyleSheet.create({
 
     disabledBtn: {
         backgroundColor: "#ff0000ff"
+    },
+
+    adminCloseBtn: {
+        marginTop: 10,
+        backgroundColor: "rgba(255, 59, 48, 0.2)",
+        borderWidth: 1,
+        borderColor: ThemeColors.danger || "#ff3b30",
+        paddingVertical: 8,
+        borderRadius: 8,
+        alignItems: "center"
+    },
+
+    adminCloseText: {
+        color: ThemeColors.danger || "#ff3b30",
+        fontSize: 12,
+        fontWeight: "bold"
     }
 })

@@ -6,7 +6,8 @@ import {
     Text,
     StyleSheet,
     Dimensions,
-    TextInput
+    TextInput,
+    Alert
 } from "react-native"
 
 import { getProducts, updateStock, createOrder } from "../service/api"
@@ -29,10 +30,26 @@ export default function Products({ route }) {
     const [search, setSearch] = useState("")
     const [sortOrder, setSortOrder] = useState(null) // "low" | "high"
     const [category, setCategory] = useState(null)
+    const [role, setRole] = useState("0512")
 
     useEffect(() => {
+        fetchRole()
         loadProducts()
     }, [offset])
+
+    async function fetchRole() {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user?.email) {
+            const { data } = await supabase
+                .from("user_roles")
+                .select("role_id")
+                .eq("email", session.user.email)
+                .single()
+            if (data?.role_id) {
+                setRole(data.role_id)
+            }
+        }
+    }
 
     useEffect(() => {
         applyFilters()
@@ -96,6 +113,21 @@ export default function Products({ route }) {
         loadProducts()
     }
 
+    async function markOutOfStock(item) {
+        Alert.alert("Confirm", "Mark this item out of stock? It will close it.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Yes",
+                onPress: async () => {
+                    await updateStock(table, item.id, 0)
+                    setOffset(0)
+                    setProducts([])
+                    loadProducts()
+                }
+            }
+        ])
+    }
+
     function nextPage() {
         setOffset(prev => prev + 10)
     }
@@ -155,7 +187,12 @@ export default function Products({ route }) {
                 contentContainerStyle={styles.listContainer}
                 keyExtractor={(item, index) => item.id?.toString() || index.toString()}
                 renderItem={({ item }) => (
-                    <ProductCard item={item} onAdd={addItem} />
+                    <ProductCard 
+                        item={item} 
+                        onAdd={addItem} 
+                        isAdmin={role === "1618"}
+                        onMarkOutOfStock={markOutOfStock}
+                    />
                 )}
                 ListFooterComponent={
                     <TouchableOpacity

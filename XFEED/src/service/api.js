@@ -15,11 +15,11 @@ export async function getProducts(table, category = null, offset = 0) {
     return data
 }
 
-export async function updateStock(table, id, currentStock) {
+export async function updateStock(table, id, newStock) {
 
     await supabase
         .from(table)
-        .update({ stock_left: currentStock - 1 })
+        .update({ stock_left: newStock })
         .eq("id", id)
 
 }
