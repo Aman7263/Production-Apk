@@ -11,6 +11,8 @@ import Products from "./src/screens/Products"
 import Admin from "./src/screens/Admin"
 import AddProduct from "./src/screens/AddProduct"
 import Auth from "./src/screens/Auth"
+import Cart from "./src/screens/Cart"
+import Orders from "./src/screens/Orders"
 
 const Stack = createNativeStackNavigator()
 
@@ -75,6 +77,8 @@ export default function App() {
               <Stack.Screen name="Products" component={Products} />
               <Stack.Screen name="Admin" component={Admin} />
               <Stack.Screen name="AddProduct" component={AddProduct} />
+              <Stack.Screen name="Cart" component={Cart} />
+              <Stack.Screen name="Orders" component={Orders} />
             </>
           ) : (
             <Stack.Screen 

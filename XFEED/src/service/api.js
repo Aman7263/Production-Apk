@@ -57,6 +57,17 @@ export async function getOrders(status) {
     return data
 }
 
+export async function getUserOrders(email, status) {
+
+    const { data } = await supabase
+        .from("order_details")
+        .select("*")
+        .eq("email", email)
+        .eq("status", status)
+
+    return data
+}
+
 export async function closeOrder(id) {
 
     await supabase

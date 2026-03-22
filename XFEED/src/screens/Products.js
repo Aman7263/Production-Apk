@@ -12,6 +12,7 @@ import {
 import { getProducts, updateStock, createOrder } from "../service/api"
 import ProductCard from "./ProductCard"
 import { GlobalStyles, ThemeColors } from "../theme"
+import { supabase } from "../service/supabase"
 
 const { width } = Dimensions.get("window")
 
@@ -82,12 +83,15 @@ export default function Products({ route }) {
             )
         )
 
+        const { data: { session } } = await supabase.auth.getSession()
+        const userEmail = session?.user?.email || "user@email.com"
+
         // for (let i = 0; i < qty; i++) {
-        await createOrder("user@email.com", item.id, item.item, qty, table, "aman", item.images)
+        await createOrder(userEmail, item.id, item.item, qty, table, "aman", item.images)
         // }
 
         // 🔥 RELOAD LIST
-        setOffset(prev)
+        setOffset(0)
         setProducts([])
         loadProducts()
     }
