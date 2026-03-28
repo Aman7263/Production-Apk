@@ -1,24 +1,130 @@
-import React, { useContext } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import React, { useState, useEffect, useContext } from "react";
+import { View, Text, StyleSheet, Dimensions, Alert } from "react-native";
+import MapView, { Marker, Polyline } from "react-native-maps";
+import * as Location from 'expo-location';
 import { useTheme } from '../Theme/ThemeContext';
+import { supabase } from '../config/supabase';
 
 export default function LocationMap() {
-  const { theme  } = useTheme();
+  const { theme } = useTheme();
+  const [location, setLocation] = useState(null);
+  const [partnerLocation, setPartnerLocation] = useState(null);
+  const [distance, setDistance] = useState(0);
+
+  useEffect(() => {
+    let locationSubscription;
+
+    const startTracking = async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission to access location was denied');
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: pData } = await supabase.from('partners').select('partner_id').eq('user_id', user.id).single();
+      const mappedPartnerId = pData ? pData.partner_id : null;
+
+      // Start watching location
+      locationSubscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, distanceInterval: 10 },
+        async (loc) => {
+          const newLoc = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          setLocation(newLoc);
+          
+          // Update my live location using user_id as conflict target
+          await supabase.from('live_tracking').upsert({
+            user_id: user.id,
+            partner_id: mappedPartnerId,
+            latitude: newLoc.latitude,
+            longitude: newLoc.longitude,
+            updated_at: new Date()
+          }, { onConflict: 'user_id' });
+
+          // Fetch partner location (where they have the SAME partner_id but DIFFERENT user_id)
+          if (mappedPartnerId) {
+            const { data: partnerLocData } = await supabase
+              .from('live_tracking')
+              .select('*')
+              .eq('partner_id', mappedPartnerId)
+              .neq('user_id', user.id)
+              .single();
+
+            if (partnerLocData) {
+              const pLoc = { latitude: partnerLocData.latitude, longitude: partnerLocData.longitude };
+              setPartnerLocation(pLoc);
+              setDistance(calculateDistance(newLoc.latitude, newLoc.longitude, pLoc.latitude, pLoc.longitude));
+            }
+          }
+        }
+      );
+    };
+
+    startTracking();
+
+    return () => {
+      if (locationSubscription) locationSubscription.remove();
+    };
+  }, []);
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+    return (R * c).toFixed(2); // Distance in km
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: theme.text }]}>User Marked Locations</Text>
-        <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <Text style={{ color: theme.text }}>You Tagged: New Delhi, India</Text>
+      <View style={[styles.header, { backgroundColor: theme.card }]}>
+        <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold' }}>Live Tracking</Text>
+        {partnerLocation && (
+          <Text style={{ color: theme.text, fontSize: 14 }}>Distance: {distance} km</Text>
+        )}
+      </View>
+
+      {location ? (
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+        >
+          <Marker coordinate={location} title="You" pinColor="blue" />
+          
+          {partnerLocation && (
+            <>
+              <Marker coordinate={partnerLocation} title="Partner" pinColor="red" />
+              <Polyline
+                coordinates={[location, partnerLocation]}
+                strokeColor="#000"
+                strokeWidth={3}
+                lineDashPattern={[5, 5]}
+              />
+            </>
+          )}
+        </MapView>
+      ) : (
+        <View style={styles.loading}>
+          <Text style={{ color: theme.text }}>Fetching Location...</Text>
         </View>
-      </ScrollView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20 },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 15 },
-  card: { padding: 15, borderRadius: 10, marginBottom: 10 }
+  header: { padding: 20, paddingTop: 60, alignItems: 'center', zIndex: 10, borderBottomWidth: 1, borderColor: '#eee' },
+  map: { width: Dimensions.get('window').width, flex: 1 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });

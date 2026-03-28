@@ -11,7 +11,8 @@ export default function HomeScreen({ navigation }) {
   const menu = [
     { name: "Map", screen: "MapScreen", icon: "📍" },
     { name: "Chat", screen: "Chat", icon: "💬" },
-    { name: "AI Ask", screen: "AskScreen", icon: "🤖" },
+    { name: "Tracking", screen: "LocationMap", icon: "🗺️" },
+    { name: "Notifications", screen: "NotificationsScreen", icon: "🔔" },
     { name: "Profile", screen: "ProfileScreen", icon: "👤" }
   ];
 
@@ -39,6 +40,30 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
+      
+      {/* Ask AI Floating Action Button */}
+      <TouchableOpacity 
+        style={{
+          position: 'absolute',
+          bottom: 30,
+          right: 30,
+          backgroundColor: '#007AFF',
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          justifyContent: 'center',
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 5,
+          elevation: 6
+        }}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate("AskScreen")}
+      >
+        <Text style={{ fontSize: 28 }}>✨</Text>
+      </TouchableOpacity>
     </LinearGradient>
   );
 }

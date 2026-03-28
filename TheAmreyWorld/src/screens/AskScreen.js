@@ -25,24 +25,9 @@ export default function AskScreen() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef();
 
-  // Fetch chat history from Supabase custom schema
-  const fetchHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .schema("theamreyworld")
-        .from("chat_history")
-        .select("*")
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      if (data) setChat(data);
-    } catch (err) {
-      console.error("Fetch Error:", err.message);
-    }
-  };
-
+  // We are keeping this purely stateful as 'chat_history' table wasn't in the schema
   useEffect(() => {
-    fetchHistory();
+    // Initial greeting could go here if needed.
   }, []);
 
   const sendQuestion = async () => {
@@ -66,27 +51,17 @@ export default function AskScreen() {
       // 1. Get Gemini Response
       const aiResponse = await askGemini(userMsg);
 
-      // 2. Save to Supabase custom schema
-      const { data, error } = await supabase
-        .schema("theamreyworld")
-        .from("chat_history")
-        .insert([{ question: userMsg, answer: aiResponse }])
-        .select();
-
-      if (error) throw error;
-
-      // 3. Update UI with the saved DB record (replace tempMsg)
-      if (data) {
-        setChat((prev) =>
-          prev.map((msg) => (msg.id === tempId ? data[0] : msg))
-        );
-      }
+      // 2. Update UI directly without querying missing table
+      const finalMsg = { ...tempMsg, answer: aiResponse };
+      
+      setChat((prev) =>
+        prev.map((msg) => (msg.id === tempId ? finalMsg : msg))
+      );
     } catch (err) {
       console.error("Send Error:", err.message);
-      // Show error in chat bubble
       setChat((prev) =>
         prev.map((msg) =>
-          msg.id === tempId ? { ...msg, answer: "Error saving chat." } : msg
+          msg.id === tempId ? { ...msg, answer: "Error processing chat." } : msg
         )
       );
     } finally {

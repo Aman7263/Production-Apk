@@ -21,8 +21,9 @@ export default function MapScreen() {
   const [markers, setMarkers] = useState([]);
   const [tempMarker, setTempMarker] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [currentPartner, setCurrentPartner] = useState(null);
+  const [selectedMarker, setSelectedMarker] = useState(null);
+  const [markerModalVisible, setMarkerModalVisible] = useState(false);
 
   const [formData, setFormData] = useState({
     tag_name: "",
@@ -46,28 +47,35 @@ export default function MapScreen() {
         return;
       }
 
+      // Get user name and partner ID
+      const name = user.user_metadata?.name || user.email?.split('@')[0] || "User";
+      
       const { data: partnerData, error: pError } = await supabase
-        .from("users")
-        .select("id, name, partner_id")
-        .eq("id", user.id)
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", user.id)
         .single();
+        
+      const partnerId = partnerData ? partnerData.partner_id : null;
 
-      if (pError || !partnerData) throw new Error("Partner profile not found");
-      setCurrentPartner(partnerData);
-      setFormData(prev => ({ ...prev, partner_name: partnerData.name }));
+      if (!partnerId) throw new Error("Partner profile not found");
+      setCurrentPartner({ id: user.id, name, partner_id: partnerId });
+      setFormData(prev => ({ ...prev, partner_name: name }));
 
       const { data: markerData, error: mError } = await supabase
         .from("locations")
         .select("*")
-        .eq("partner_tagged_id", partnerData.partner_id);
+        .eq("partner_tagged_id", partnerId);
 
       if (mError) throw mError;
-
-      setMarkers(markerData.map(d => ({
-        id: d.id,
-        coordinate: { latitude: d.latitude, longitude: d.longitude },
-        data: d,
-      })));
+      
+      if (markerData) {
+        setMarkers(markerData.map(d => ({
+          id: d.id,
+          coordinate: { latitude: d.latitude, longitude: d.longitude },
+          data: d,
+        })));
+      }
     } catch (error) {
       console.error("Setup Error:", error.message);
     } finally {
@@ -128,6 +136,47 @@ export default function MapScreen() {
     setModalVisible(false);
   };
 
+  const handleMarkerPress = (marker) => {
+    setSelectedMarker(marker);
+    setMarkerModalVisible(true);
+  };
+
+  const handleDeleteMarker = async () => {
+    if (!selectedMarker) return;
+
+    // If marker belongs to current user, delete immediately
+    if (selectedMarker.data.user_id === currentPartner.id) {
+      try {
+        const { error } = await supabase.from('locations').delete().eq('id', selectedMarker.id);
+        if (error) throw error;
+        setMarkers(markers.filter(m => m.id !== selectedMarker.id));
+        setMarkerModalVisible(false);
+        Alert.alert("Success", "Location deleted.");
+      } catch (e) {
+        Alert.alert("Error", e.message);
+      }
+    } else {
+      // Must request permission
+      try {
+        const payload = {
+          sender_id: currentPartner.id,
+          receiver_id: selectedMarker.data.user_id, // Partner's ID
+          message: `${currentPartner.name || 'Your partner'} wants to delete marker "${selectedMarker.data.tag_name}"`,
+          type: 'permission',
+          action: 'delete_location',
+          target_id: selectedMarker.id,
+          status: 'pending'
+        };
+        const { error } = await supabase.from('notifications').insert(payload);
+        if (error) throw error;
+        setMarkerModalVisible(false);
+        Alert.alert("Notice", "Deletion request sent to your partner.");
+      } catch (e) {
+        Alert.alert("Error", e.message);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -149,9 +198,17 @@ export default function MapScreen() {
         onPress={handleMapPress}
       >
         {markers.map(m => (
-          <Marker key={m.id} coordinate={m.coordinate} anchor={{ x: 0.5, y: 1 }}>
+          <Marker 
+            key={m.id} 
+            coordinate={m.coordinate} 
+            anchor={{ x: 0.5, y: 1 }}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleMarkerPress(m);
+            }}
+          >
             <View style={styles.markerWrapper}>
-              <Icon name="map-marker" size={40} color="#007AFF" />
+              <Icon name="map-marker" size={40} color={m.data.user_id === currentPartner?.id ? "#007AFF" : "#FF2D55"} />
               <View style={styles.label}><Text style={styles.labelText}>{m.data.tag_name}</Text></View>
             </View>
           </Marker>
@@ -231,6 +288,31 @@ export default function MapScreen() {
                 <Text style={{ color: "#fff" }}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Existing Marker Modal */}
+      <Modal visible={markerModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {selectedMarker?.data.tag_name}
+            </Text>
+            <Text style={{ color: theme.text, marginBottom: 10 }}>{selectedMarker?.data.description}</Text>
+            
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#F44336' }]} onPress={handleDeleteMarker}>
+              <Text style={styles.btnText}>
+                {selectedMarker?.data.user_id === currentPartner?.id ? "Delete Location" : "Request Delete Permission"}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.saveBtn, { backgroundColor: "#aaa", marginTop: 10 }]} 
+              onPress={() => setMarkerModalVisible(false)}
+            >
+              <Text style={{ color: "#fff" }}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

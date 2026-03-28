@@ -44,7 +44,7 @@ export default function LoginSignup() {
 
      // ✅ Insert into partners table in custom schema
       const { error: partnerError } = await supabase
-        .from("theamreyworld.partners") // <-- fully qualified schema.table
+        .from("partners")
         .insert([{ user_id: userId, partner_id: partnerID }]);
 
       if (partnerError) {
