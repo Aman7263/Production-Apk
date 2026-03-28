@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS theamreyworld.partners (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     partner_id TEXT NOT NULL,
+    linked_id TEXT,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
@@ -72,6 +73,18 @@ CREATE TABLE IF NOT EXISTS theamreyworld.live_tracking (
 );
 
 -- =========================================================
+-- 7. PAYMENTS (transaction history)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS theamreyworld.payments (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    amount NUMERIC NOT NULL,
+    status TEXT DEFAULT 'completed',
+    plan TEXT,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- =========================================================
 -- 6. ENABLE RLS + SIMPLE POLICIES (for authenticated users)
 -- =========================================================
 
@@ -79,8 +92,9 @@ CREATE TABLE IF NOT EXISTS theamreyworld.live_tracking (
 ALTER TABLE theamreyworld.partners ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "partners_access"
 ON theamreyworld.partners
-FOR ALL TO authenticated
-USING (true);
+FOR ALL TO public
+USING (true)
+WITH CHECK (true);
 
 -- Messages
 ALTER TABLE theamreyworld.messages ENABLE ROW LEVEL SECURITY;
@@ -109,6 +123,26 @@ CREATE POLICY "tracking_access"
 ON theamreyworld.live_tracking
 FOR ALL TO authenticated
 USING (true);
+
+-- Payments
+ALTER TABLE theamreyworld.payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "payments_access"
+ON theamreyworld.payments
+FOR ALL TO authenticated
+USING (true);
+
+-- =========================================================
+-- 8. GRANT USAGE PRIVILEGES
+-- =========================================================
+-- This is critical for postgREST to access the custom schema!
+GRANT USAGE ON SCHEMA theamreyworld TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA theamreyworld TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA theamreyworld TO anon, authenticated;
+
+
+INSERT INTO theamreyworld.partners ("id", "user_id", "partner_id", "created_at") VALUES ('3016efbd-319a-4a0d-a30e-ec3f1bcc16e7', 'd21abdce-728b-43a7-89b1-3fa73a9d2c36', '161800', '2026-03-28 12:05:30.438346+00');
+
+INSERT INTO theamreyworld.partners ("id", "user_id", "partner_id", "created_at") VALUES ('3016efbd-319a-4a0d-a30e-ec3f1bcc16e0', '5b6b0314-d793-4b11-9cb6-ba651e29c6cb', '051200', '2026-03-28 12:05:30.438346+00');
 
 -- =========================================================
 -- DONE ✅

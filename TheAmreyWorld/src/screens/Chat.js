@@ -18,15 +18,15 @@ export default function Chat() {
       if (!user) return;
       setUserId(user.id);
 
-      const { data: pData } = await supabase.from('partners').select('partner_id').eq('user_id', user.id).single();
+      const { data: pData } = await supabase.from('partners').select('partner_id, linked_id').eq('user_id', user.id).single();
       const mappedPartnerId = pData ? pData.partner_id : null;
       setPartnerId(mappedPartnerId);
 
-      if (mappedPartnerId) {
+      if (mappedPartnerId && pData.linked_id) {
         const { data } = await supabase
           .from("messages")
           .select("*")
-          .eq("partner_id", mappedPartnerId)
+          .or(`partner_id.eq.${mappedPartnerId},partner_id.eq.${pData.linked_id}`)
           .order("created_at", { ascending: true });
         if (data) setMessages(data);
       }

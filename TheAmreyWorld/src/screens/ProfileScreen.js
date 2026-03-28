@@ -14,7 +14,7 @@ import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from "../config/supabase";
 
 export default function ProfileScreen({ navigation }) {
-  const { theme  } = useTheme();
+  const { theme } = useTheme();
 
   const [user, setUser] = useState(null);
   const [profilePic, setProfilePic] = useState(null);
@@ -25,6 +25,9 @@ export default function ProfileScreen({ navigation }) {
   const [partnerID, setPartnerID] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
+  const [originalMyId, setOriginalMyId] = useState("");
+  const [linkedId, setLinkedId] = useState("");
 
   useEffect(() => {
     getUser();
@@ -51,10 +54,30 @@ export default function ProfileScreen({ navigation }) {
     // Fetch partner ID from partners table
     const { data: partnerData } = await supabase
       .from("partners")
-      .select("partner_id")
+      .select("partner_id, linked_id")
       .eq("user_id", currentUser.id)
       .single();
-    if (partnerData?.partner_id) setPartnerID(partnerData.partner_id);
+
+    if (partnerData?.partner_id) {
+      if (partnerData.linked_id) {
+        setPartnerID(partnerData.linked_id);
+        setLinkedId(partnerData.linked_id);
+      } else {
+        setPartnerID(partnerData.partner_id);
+      }
+      setOriginalMyId(partnerData.partner_id);
+    }
+
+    // Check payment status
+    const { data: paymentData } = await supabase
+      .from("payments")
+      .select("status")
+      .eq("user_id", currentUser.id)
+      .eq("status", "completed");
+
+    if (paymentData && paymentData.length > 0) {
+      setHasPaid(true);
+    }
   }
 
   useEffect(() => {
@@ -64,17 +87,24 @@ export default function ProfileScreen({ navigation }) {
     }
 
     const fetchPartnerName = async () => {
+      // Clients cannot query auth.users securely. We check the partners table instead!
       const { data, error } = await supabase
-        .from("auth.users")
-        .select("user_metadata")
-        .eq("id", partnerID)
+        .from("partners")
+        .select("user_id")
+        .eq("partner_id", partnerID)
         .single();
-      if (data) setPartnerName(data.user_metadata?.name || "Not found");
-      else setPartnerName("Not found");
+
+      if (data && partnerID !== originalMyId) {
+        setPartnerName(partnerID === linkedId ? `✅ Linked Partner: ${partnerID}` : `User Alias: ${partnerID}`);
+      } else if (partnerID === originalMyId) {
+        setPartnerName("This is your own ID");
+      } else {
+        setPartnerName("Not found");
+      }
     };
 
     fetchPartnerName();
-  }, [partnerID]);
+  }, [partnerID, originalMyId]);
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -128,24 +158,46 @@ export default function ProfileScreen({ navigation }) {
         password: password || undefined,
       });
 
-      const { data: existingPartner } = await supabase
-        .from("partners")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (existingPartner) {
-        await supabase.from("partners").update({ partner_id: partnerID }).eq("user_id", user.id);
-      } else {
-        await supabase.from("partners").insert({ user_id: user.id, partner_id: partnerID });
-      }
-
+      Alert.alert("Success", "Profile details updated successfully!");
       setPassword("");
       setSelectedImage(null);
-      Alert.alert("Success", "Profile updated successfully!");
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPairingRequest = async () => {
+    if (partnerID === originalMyId || partnerID === "") {
+      Alert.alert("Error", "Enter a valid Partner ID that is not your own.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data: targetPartner } = await supabase
+        .from("partners")
+        .select("user_id")
+        .eq("partner_id", partnerID)
+        .single();
+
+      if (targetPartner) {
+        await supabase.from("notifications").insert([{
+          sender_id: user.id,
+          receiver_id: targetPartner.user_id,
+          message: `${name + ' ' + originalMyId} requested to pair with you!`,
+          type: "partner_request",
+          action: "connect",
+          status: "pending"
+        }]);
+        Alert.alert("Request Sent", "A pairing request has been sent via notification. Wait for their approval!");
+      } else {
+        Alert.alert("Error", "No user found with that Partner ID.");
+        setPartnerID(originalMyId);
+      }
+    } catch (e) {
+      Alert.alert("Error", e.message);
     } finally {
       setLoading(false);
     }
@@ -187,19 +239,32 @@ export default function ProfileScreen({ navigation }) {
           secureTextEntry
         />
 
-        <Text style={[styles.label, { color: theme.text }]}>Partner ID</Text>
+        <Text style={[styles.label, { color: theme.text }]}>
+          {linkedId ? "Connected Partner ID" : "Partner ID (Requires Completed Payment)"}
+        </Text>
         <TextInput
-          style={[styles.input, { color: theme.text, borderColor: theme.primary }]}
+          style={[styles.input, { color: theme.text, borderColor: linkedId ? "#4CAF50" : theme.primary, opacity: hasPaid ? 1 : 0.5 }]}
           value={partnerID}
           onChangeText={setPartnerID}
           placeholder="Enter Partner ID"
           placeholderTextColor={theme.text + "99"}
+          editable={hasPaid && !linkedId} // Lock input if already linked
         />
 
         {partnerID !== "" && (
           <Text style={{ marginTop: 5, color: theme.text, opacity: 0.8 }}>
             Partner Name: {partnerName}
           </Text>
+        )}
+
+        {hasPaid && partnerID !== "" && partnerID !== originalMyId && partnerName.startsWith("User") && (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.glow, marginTop: 15, paddingVertical: 10 }]}
+            onPress={sendPairingRequest}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color={theme.background} /> : <Text style={[styles.buttonText, { color: theme.background }]}>Send Pairing Request</Text>}
+          </TouchableOpacity>
         )}
 
         <Text style={[styles.label, { color: theme.text, marginTop: 15 }]}>Email</Text>
@@ -211,7 +276,7 @@ export default function ProfileScreen({ navigation }) {
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary, marginTop: 10 }]} onPress={goToPaymentHistory}>
-        <Text style={styles.buttonText}>Payment History</Text>
+        <Text style={styles.buttonText}>Payment</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.button, { backgroundColor: "#ff4d4d", marginTop: 10 }]} onPress={() => supabase.auth.signOut()}>

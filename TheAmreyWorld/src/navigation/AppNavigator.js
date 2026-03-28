@@ -11,6 +11,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import LocationMap from '../screens/LocationMap';
 import AskScreen from '../screens/AskScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import PaymentHistory from '../screens/PaymentHistory';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -56,6 +57,7 @@ export default function AppNavigator() {
                 <Stack.Screen name="LocationMap" component={LocationMap} />
                 <Stack.Screen name="AskScreen" component={AskScreen} />
                 <Stack.Screen name="NotificationsScreen" component={NotificationsScreen} />
+                <Stack.Screen name="PaymentHistory" component={PaymentHistory} />
               </>
             ) : (
               <Stack.Screen name="Login" component={LoginSignup} />

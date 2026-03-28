@@ -24,8 +24,9 @@ export default function LocationMap() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: pData } = await supabase.from('partners').select('partner_id').eq('user_id', user.id).single();
+      const { data: pData } = await supabase.from('partners').select('partner_id, linked_id').eq('user_id', user.id).single();
       const mappedPartnerId = pData ? pData.partner_id : null;
+      const linkedId = pData ? pData.linked_id : null;
 
       // Start watching location
       locationSubscription = await Location.watchPositionAsync(
@@ -43,13 +44,12 @@ export default function LocationMap() {
             updated_at: new Date()
           }, { onConflict: 'user_id' });
 
-          // Fetch partner location (where they have the SAME partner_id but DIFFERENT user_id)
-          if (mappedPartnerId) {
+          // Fetch partner location securely querying ONLY their dedicated linked coordinate
+          if (linkedId) {
             const { data: partnerLocData } = await supabase
               .from('live_tracking')
               .select('*')
-              .eq('partner_id', mappedPartnerId)
-              .neq('user_id', user.id)
+              .eq('partner_id', linkedId)
               .single();
 
             if (partnerLocData) {

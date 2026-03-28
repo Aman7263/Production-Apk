@@ -21,6 +21,7 @@ export default function MapScreen() {
   const [markers, setMarkers] = useState([]);
   const [tempMarker, setTempMarker] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [currentPartner, setCurrentPartner] = useState(null);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [markerModalVisible, setMarkerModalVisible] = useState(false);
@@ -52,20 +53,23 @@ export default function MapScreen() {
       
       const { data: partnerData, error: pError } = await supabase
         .from("partners")
-        .select("partner_id")
+        .select("partner_id, linked_id")
         .eq("user_id", user.id)
         .single();
         
       const partnerId = partnerData ? partnerData.partner_id : null;
+      const linkedId = partnerData ? partnerData.linked_id : null;
 
       if (!partnerId) throw new Error("Partner profile not found");
-      setCurrentPartner({ id: user.id, name, partner_id: partnerId });
+      setCurrentPartner({ id: user.id, name, partner_id: partnerId, linked_id: linkedId });
       setFormData(prev => ({ ...prev, partner_name: name }));
 
-      const { data: markerData, error: mError } = await supabase
-        .from("locations")
-        .select("*")
-        .eq("partner_tagged_id", partnerId);
+      // Fetch locations tagged by user AND partner securely
+      if (partnerId) {
+        const { data: markerData, error: mError } = await supabase
+          .from("locations")
+          .select("*")
+          .or(`partner_tagged_id.eq.${partnerId}${linkedId ? `,partner_tagged_id.eq.${linkedId}` : ''}`);
 
       if (mError) throw mError;
       
@@ -76,6 +80,7 @@ export default function MapScreen() {
           data: d,
         })));
       }
+      } // closing brace for if (partnerId)
     } catch (error) {
       console.error("Setup Error:", error.message);
     } finally {
