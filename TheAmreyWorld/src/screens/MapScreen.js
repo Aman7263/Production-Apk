@@ -9,7 +9,9 @@ import {
   Alert,
   ScrollView,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../config/supabase";
@@ -230,9 +232,12 @@ export default function MapScreen() {
 
       {/* Modal Bottom Sheet */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={[styles.title, { color: theme.text }]}>
                 Tagging as: {currentPartner?.name}
               </Text>
@@ -294,7 +299,7 @@ export default function MapScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Existing Marker Modal */}

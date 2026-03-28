@@ -8,6 +8,9 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from '../Theme/ThemeContext';
@@ -208,81 +211,100 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background, padding: 25 }}>
-      <TouchableOpacity onPress={pickImage} style={styles.profilePicWrapper}>
-        {profilePic ? (
-          <Image source={{ uri: profilePic }} style={styles.profilePic} />
-        ) : (
-          <View style={[styles.profilePic, { backgroundColor: "#ccc", justifyContent: "center", alignItems: "center" }]}>
-            <Text style={{ fontSize: 30 }}>👤</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
-      <View style={[styles.profileCard, { backgroundColor: theme.card }]}>
-        <Text style={[styles.label, { color: theme.text }]}>Name</Text>
-        <TextInput
-          style={[styles.input, { color: theme.text, borderColor: theme.primary }]}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-          placeholderTextColor={theme.text + "99"}
-        />
-
-        <Text style={[styles.label, { color: theme.text }]}>Password</Text>
-        <TextInput
-          style={[styles.input, { color: theme.text, borderColor: theme.primary }]}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter new password"
-          placeholderTextColor={theme.text + "99"}
-          secureTextEntry
-        />
-
-        <Text style={[styles.label, { color: theme.text }]}>
-          {linkedId ? "Connected Partner ID" : "Partner ID (Requires Completed Payment)"}
-        </Text>
-        <TextInput
-          style={[styles.input, { color: theme.text, borderColor: linkedId ? "#4CAF50" : theme.primary, opacity: hasPaid ? 1 : 0.5 }]}
-          value={partnerID}
-          onChangeText={setPartnerID}
-          placeholder="Enter Partner ID"
-          placeholderTextColor={theme.text + "99"}
-          editable={hasPaid && !linkedId} // Lock input if already linked
-        />
-
-        {partnerID !== "" && (
-          <Text style={{ marginTop: 5, color: theme.text, opacity: 0.8 }}>
-            Partner Name: {partnerName}
-          </Text>
-        )}
-
-        {hasPaid && partnerID !== "" && partnerID !== originalMyId && partnerName.startsWith("User") && (
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.glow, marginTop: 15, paddingVertical: 10 }]}
-            onPress={sendPairingRequest}
-            disabled={loading}
-          >
-            {loading ? <ActivityIndicator color={theme.background} /> : <Text style={[styles.buttonText, { color: theme.background }]}>Send Pairing Request</Text>}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 50 }}
+        style={{ flex: 1, backgroundColor: theme.background }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ padding: 25 }}>
+          <TouchableOpacity onPress={pickImage} style={styles.profilePicWrapper}>
+            {profilePic ? (
+              <Image source={{ uri: profilePic }} style={styles.profilePic} />
+            ) : (
+              <View style={[styles.profilePic, { backgroundColor: theme.card, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: theme.primary }]}>
+                <Text style={{ fontSize: 30 }}>👤</Text>
+              </View>
+            )}
           </TouchableOpacity>
-        )}
 
-        <Text style={[styles.label, { color: theme.text, marginTop: 15 }]}>Email</Text>
-        <Text style={{ color: theme.text, fontSize: 18 }}>{email}</Text>
-      </View>
+          <View style={[styles.profileCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.label, { color: theme.secondaryText }]}>Name</Text>
+            <TextInput
+              style={[styles.input, { color: theme.text, borderColor: theme.primary, backgroundColor: theme.background + "40" }]}
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter your name"
+              placeholderTextColor={theme.secondaryText}
+            />
 
-      <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={handleSaveChanges} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </TouchableOpacity>
+            <Text style={[styles.label, { color: theme.secondaryText }]}>Password</Text>
+            <TextInput
+              style={[styles.input, { color: theme.text, borderColor: theme.primary, backgroundColor: theme.background + "40" }]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter new password"
+              placeholderTextColor={theme.secondaryText}
+              secureTextEntry
+            />
 
-      <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary, marginTop: 10 }]} onPress={goToPaymentHistory}>
-        <Text style={styles.buttonText}>Payment</Text>
-      </TouchableOpacity>
+            <Text style={[styles.label, { color: theme.secondaryText }]}>
+              {linkedId ? "Connected Partner ID" : "Partner ID (Requires Completed Payment)"}
+            </Text>
+            <TextInput
+              style={[
+                styles.input, 
+                { 
+                  color: theme.text, 
+                  borderColor: linkedId ? "#4CAF50" : theme.primary, 
+                  opacity: (hasPaid || linkedId) ? 1 : 0.5,
+                  backgroundColor: theme.background + "40" 
+                }
+              ]}
+              value={partnerID}
+              onChangeText={setPartnerID}
+              placeholder="Enter Partner ID"
+              placeholderTextColor={theme.secondaryText}
+              editable={hasPaid && !linkedId}
+            />
 
-      <TouchableOpacity style={[styles.button, { backgroundColor: "#ff4d4d", marginTop: 10 }]} onPress={() => supabase.auth.signOut()}>
-        <Text style={styles.buttonText}>Logout</Text>
-      </TouchableOpacity>
-    </View>
+            {partnerID !== "" && (
+              <Text style={{ marginTop: 5, color: theme.text, fontWeight: "500" }}>
+                Partner Name: {partnerName}
+              </Text>
+            )}
+
+            {hasPaid && partnerID !== "" && partnerID !== originalMyId && partnerName.startsWith("User") && (
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: theme.glow, marginTop: 15, paddingVertical: 10 }]}
+                onPress={sendPairingRequest}
+                disabled={loading}
+              >
+                {loading ? <ActivityIndicator color={theme.background} /> : <Text style={[styles.buttonText, { color: theme.buttonText }]}>Send Pairing Request</Text>}
+              </TouchableOpacity>
+            )}
+
+            <Text style={[styles.label, { color: theme.secondaryText, marginTop: 15 }]}>Email</Text>
+            <Text style={{ color: theme.text, fontSize: 18, fontWeight: "600" }}>{email}</Text>
+          </View>
+
+          <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={handleSaveChanges} disabled={loading}>
+            {loading ? <ActivityIndicator color={theme.buttonText} /> : <Text style={[styles.buttonText, { color: theme.buttonText }]}>Save Changes</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary, marginTop: 10 }]} onPress={goToPaymentHistory}>
+            <Text style={[styles.buttonText, { color: theme.buttonText }]}>Payment Center</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.button, { backgroundColor: "#ef4444", marginTop: 20 }]} onPress={() => supabase.auth.signOut()}>
+            <Text style={[styles.buttonText, { color: "#fff" }]}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -292,6 +314,6 @@ const styles = StyleSheet.create({
   profilePic: { width: 120, height: 120, borderRadius: 60 },
   label: { fontSize: 12, opacity: 0.6, marginBottom: 5 },
   input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 15 },
-  button: { padding: 15, borderRadius: 12, alignItems: "center" },
-  buttonText: { color: "#26850c", fontWeight: "bold" },
+  button: { padding: 15, borderRadius: 12, alignItems: "center", elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3 },
+  buttonText: { fontWeight: "bold", fontSize: 16 },
 });

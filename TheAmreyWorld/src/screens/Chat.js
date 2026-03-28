@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { View, TextInput, TouchableOpacity, Text, FlatList, StyleSheet, Alert } from "react-native";
+import { View, TextInput, TouchableOpacity, Text, FlatList, StyleSheet, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from "../config/supabase";
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,8 +32,6 @@ export default function Chat() {
       }
     };
     fetchSessionAndMessages();
-
-    // Basic real-time subscription mock or refetch logic could go here
   }, []);
 
   const sendToPartner = async () => {
@@ -57,49 +55,65 @@ export default function Chat() {
       colors={[theme.gradientStart, theme.gradientEnd]}
       style={{ flex: 1 }}>
       
-      <View style={[styles.headerActions, { backgroundColor: theme.header }]}>
-        <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold' }}>Partner Chat</Text>
-        <View style={styles.callButtons}>
-          <TouchableOpacity onPress={() => handleCall('Audio')} style={styles.actionBtn}>
-            <Text style={{ fontSize: 20 }}>📞</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleCall('Video')} style={styles.actionBtn}>
-            <Text style={{ fontSize: 20 }}>📹</Text>
-          </TouchableOpacity>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        style={{ flex: 1 }}
+      >
+        <View style={[styles.headerActions, { backgroundColor: theme.header }]}>
+          <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold' }}>Partner Chat</Text>
+          <View style={styles.callButtons}>
+            <TouchableOpacity onPress={() => handleCall('Audio')} style={styles.actionBtn}>
+              <Text style={{ fontSize: 20 }}>📞</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleCall('Video')} style={styles.actionBtn}>
+              <Text style={{ fontSize: 20 }}>📹</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-      <FlatList
-        data={messages}
-        renderItem={({ item }) => (
-          <GlassCard style={[styles.bubble, { alignSelf: item.sender_id === userId ? 'flex-end' : 'flex-start' }]} tint="light" intensity={40}>
-            <Text style={{ color: theme.text, fontSize: 16 }}>{item.content}</Text>
-          </GlassCard>
-        )}
-        keyExtractor={(item) => item.id.toString()}
-        style={{ flex: 1, padding: 10 }}
-      />
-      <GlassCard 
-        intensity={60} 
-        style={[
-          styles.inputArea, 
-          { 
-            borderRadius: 0,
-            borderTopWidth: 1, 
-            borderTopColor: theme.glow,
-            backgroundColor: theme.header 
-          }
-        ]}>
-        <TextInput 
-          value={message} 
-          onChangeText={setMessage} 
-          style={[styles.input, { color: theme.text, borderColor: theme.glow }]} 
-          placeholder="Type to partner..."
-          placeholderTextColor="#999"
+        <FlatList
+          data={messages}
+          renderItem={({ item }) => (
+            <GlassCard 
+              style={[
+                styles.bubble, 
+                { 
+                  alignSelf: item.sender_id === userId ? 'flex-end' : 'flex-start',
+                  backgroundColor: item.sender_id === userId ? theme.primary : theme.card,
+                }
+              ]} 
+              tint={item.sender_id === userId ? "dark" : "light"} 
+              intensity={80}
+            >
+              <Text style={{ color: item.sender_id === userId ? theme.buttonText : theme.text, fontSize: 16 }}>{item.content}</Text>
+            </GlassCard>
+          )}
+          keyExtractor={(item) => (item.id || Math.random()).toString()}
+          style={{ flex: 1, padding: 10 }}
         />
-        <TouchableOpacity onPress={sendToPartner} style={styles.btn}>
-          <Text style={{ color: theme.glow, fontWeight: "bold", textShadowColor: theme.glow, textShadowRadius: 10 }}>Send</Text>
-        </TouchableOpacity>
-      </GlassCard>
+        <GlassCard 
+          intensity={80} 
+          style={[
+            styles.inputArea, 
+            { 
+              borderRadius: 0,
+              borderTopWidth: 1, 
+              borderTopColor: theme.primary + "30",
+              backgroundColor: theme.header 
+            }
+          ]}>
+          <TextInput 
+            value={message} 
+            onChangeText={setMessage} 
+            style={[styles.input, { color: theme.text, borderColor: theme.primary, backgroundColor: theme.background + "50" }]} 
+            placeholder="Type to partner..."
+            placeholderTextColor={theme.secondaryText}
+          />
+          <TouchableOpacity onPress={sendToPartner} style={styles.btn}>
+            <Text style={{ color: theme.primary, fontWeight: "bold", fontSize: 16 }}>Send</Text>
+          </TouchableOpacity>
+        </GlassCard>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
