@@ -50,9 +50,7 @@ export default function HomeScreen({ navigation }) {
       colors={[theme.gradientStart, theme.gradientEnd]}
       style={{ flex: 1, padding: 10 }}>
 
-      <View style={{ alignItems: 'center', marginVertical: 20 }}>
-        <GradientText style={{ fontSize: 32, fontWeight: 'bold' }}>Dashboard</GradientText>
-      </View>
+      {/* Removed Redundant Header */}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {menu.map((item, i) => {

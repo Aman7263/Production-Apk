@@ -44,26 +44,33 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <View style={{ flex: 1 }}>
-        {session && <Header />}
-
-        <View style={{ flex: 1 }}>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {session ? (
-              <>
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen name="MapScreen" component={MapScreen} />
-                <Stack.Screen name="Chat" component={Chat} />
-                <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
-                <Stack.Screen name="LocationMap" component={LocationMap} />
-                <Stack.Screen name="AskScreen" component={AskScreen} />
-                <Stack.Screen name="NotificationsScreen" component={NotificationsScreen} />
-                <Stack.Screen name="PaymentHistory" component={PaymentHistory} />
-              </>
-            ) : (
-              <Stack.Screen name="Login" component={LoginSignup} />
-            )}
-          </Stack.Navigator>
-        </View>
+        <Stack.Navigator 
+          screenOptions={({ route }) => ({
+            headerShown: session ? true : false,
+            header: (props) => (
+              <Header 
+                title={route.name === 'Home' ? null : (props.options.title || route.name)} 
+                rightAction={props.options.headerRight ? props.options.headerRight() : null}
+                {...props} 
+              />
+            )
+          })}
+        >
+          {session ? (
+            <>
+              <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="MapScreen" component={MapScreen} options={{ title: "Our Saved Map" }} />
+              <Stack.Screen name="Chat" component={Chat} options={{ title: "Partner Talk" }} />
+              <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: "Profile" }} />
+              <Stack.Screen name="LocationMap" component={LocationMap} options={{ title: "Live Tracking" }} />
+              <Stack.Screen name="AskScreen" component={AskScreen} options={{ title: "Ask AI" }} />
+              <Stack.Screen name="NotificationsScreen" component={NotificationsScreen} options={{ title: "Notifications" }} />
+              <Stack.Screen name="PaymentHistory" component={PaymentHistory} options={{ title: "Payment History" }} />
+            </>
+          ) : (
+            <Stack.Screen name="Login" component={LoginSignup} options={{ headerShown: false }} />
+          )}
+        </Stack.Navigator>
 
         {session && <Footer />}
       </View>

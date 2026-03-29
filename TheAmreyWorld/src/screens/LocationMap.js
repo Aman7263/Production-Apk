@@ -83,12 +83,14 @@ export default function LocationMap() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <View style={[styles.header, { backgroundColor: theme.card }]}>
-        <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold' }}>Live Tracking</Text>
-        {partnerLocation && (
-          <Text style={{ color: theme.text, fontSize: 14 }}>Distance: {distance} km</Text>
-        )}
-      </View>
+      {/* Floating Distance Indicator */}
+      {partnerLocation && (
+        <View style={[styles.floatingCard, { backgroundColor: theme.card, borderColor: theme.glow }]}>
+          <Text style={{ color: theme.text, fontSize: 14, fontWeight: 'bold' }}>
+            📍 Distance to Partner: {distance} km
+          </Text>
+        </View>
+      )}
 
       {location ? (
         <MapView
@@ -124,7 +126,22 @@ export default function LocationMap() {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 20, paddingTop: 60, alignItems: 'center', zIndex: 10, borderBottomWidth: 1, borderColor: '#eee' },
+  floatingCard: { 
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    padding: 15, 
+    borderRadius: 15, 
+    alignItems: 'center', 
+    zIndex: 100, 
+    borderWidth: 1,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
   map: { width: Dimensions.get('window').width, flex: 1 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });

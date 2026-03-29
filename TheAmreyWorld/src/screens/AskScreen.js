@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,25 +10,19 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
-import { useTheme } from '../Theme/ThemeContext';
+import { useTheme } from "../Theme/ThemeContext";
 import { askGemini } from "../config/geminiService";
-import { supabase } from "../config/supabase";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { LinearGradient } from 'expo-linear-gradient';
-import GlassCard from '../components/GlassCard';
-import GradientText from '../components/GradientText';
+import { LinearGradient } from "expo-linear-gradient";
+import GlassCard from "../components/GlassCard";
+import GradientText from "../components/GradientText";
 
 export default function AskScreen() {
-  const { theme  } = useTheme();
+  const { theme } = useTheme();
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef();
-
-  // We are keeping this purely stateful as 'chat_history' table wasn't in the schema
-  useEffect(() => {
-    // Initial greeting could go here if needed.
-  }, []);
+  const scrollRef = useRef(null);
 
   const sendQuestion = async () => {
     if (!question.trim() || loading) return;
@@ -37,31 +31,33 @@ export default function AskScreen() {
     setQuestion("");
     setLoading(true);
 
-    // Optimistic Update: show user message immediately
     const tempId = Date.now().toString();
+
     const tempMsg = {
       id: tempId,
       question: userMsg,
-      answer: "...",
+      answer: null,
       created_at: new Date().toISOString(),
     };
+
     setChat((prev) => [...prev, tempMsg]);
 
     try {
-      // 1. Get Gemini Response
       const aiResponse = await askGemini(userMsg);
 
-      // 2. Update UI directly without querying missing table
-      const finalMsg = { ...tempMsg, answer: aiResponse };
-      
       setChat((prev) =>
-        prev.map((msg) => (msg.id === tempId ? finalMsg : msg))
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, answer: aiResponse } : msg
+        )
       );
     } catch (err) {
       console.error("Send Error:", err.message);
+
       setChat((prev) =>
         prev.map((msg) =>
-          msg.id === tempId ? { ...msg, answer: "Error processing chat." } : msg
+          msg.id === tempId
+            ? { ...msg, answer: "⚠️ Error processing chat." }
+            : msg
         )
       );
     } finally {
@@ -69,37 +65,61 @@ export default function AskScreen() {
     }
   };
 
-  // Scroll to bottom whenever chat updates
+  // ✅ Smooth auto-scroll
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   }, [chat]);
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <LinearGradient
         colors={[theme.gradientStart, theme.gradientEnd]}
         style={{ flex: 1 }}
       >
         <KeyboardAwareScrollView
-          contentContainerStyle={{ flexGrow: 1, padding: 15 }}
-          extraScrollHeight={Platform.OS === "ios" ? 90 : 120}
-          enableOnAndroid={true}
+          ref={scrollRef} // ✅ FIXED (no innerRef)
+          contentContainerStyle={{
+            flexGrow: 1,
+            padding: 15,
+            paddingBottom: 100,
+          }}
+          extraScrollHeight={100}
+          enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          ref={scrollRef}
         >
-          <View style={{ flex: 1, justifyContent: "flex-end" }}>
-            
-            <View style={{ alignItems: 'center', marginVertical: 10 }}>
-              <GradientText style={{ fontSize: 28, fontWeight: 'bold' }}>Ask AI</GradientText>
-            </View>
+          <View style={{ flex: 1 }}>
+            {/* Title */}
+            {/* Removed Redundant Header */}
 
             {/* Chat Messages */}
             {chat.map((item) => (
               <View key={item.id} style={{ marginBottom: 20 }}>
-                {/* User Message */}
-                <GlassCard style={styles.userBubble} intensity={80}>
-                  <Text style={styles.userText}>{item.question}</Text>
-                  <Text style={[styles.timeText, { color: theme.background }]}>
+                {/* USER */}
+                <GlassCard
+                  style={[
+                    styles.userBubble,
+                    { backgroundColor: theme.primary },
+                  ]}
+                  intensity={100}
+                  tint="dark"
+                >
+                  <Text
+                    style={[
+                      styles.userText,
+                      { color: theme.buttonText },
+                    ]}
+                  >
+                    {item.question}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.timeText,
+                      { color: theme.buttonText, opacity: 0.7 },
+                    ]}
+                  >
                     {new Date(item.created_at).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -107,41 +127,91 @@ export default function AskScreen() {
                   </Text>
                 </GlassCard>
 
-                {/* AI Message */}
-                <GlassCard style={styles.aiBubble} tint="light" intensity={30}>
-                  {item.answer === "..." ? (
-                    <ActivityIndicator size="small" color={theme.glow} />
+                {/* AI */}
+                <GlassCard
+                  style={[
+                    styles.aiBubble,
+                    { backgroundColor: theme.card },
+                  ]}
+                  intensity={30}
+                  tint="light"
+                >
+                  {item.answer === null ? (
+                    <ActivityIndicator size="small" color={theme.primary} />
                   ) : (
-                    <Text style={{ color: theme.text, lineHeight: 22 }}>
-                      {item.answer}
-                    </Text>
+                    <>
+                      <Text
+                        style={{
+                          color: theme.text,
+                          lineHeight: 22,
+                        }}
+                      >
+                        {item.answer}
+                      </Text>
+
+                      <Text
+                        style={[
+                          styles.timeText,
+                          { color: theme.secondaryText },
+                        ]}
+                      >
+                        {new Date(item.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </>
                   )}
                 </GlassCard>
               </View>
             ))}
 
-            {/* Input Area */}
-            <GlassCard style={styles.inputContainer} intensity={60}>
-              <TextInput
-                value={question}
-                onChangeText={setQuestion}
-                placeholder="Type your message..."
-                placeholderTextColor={theme.text + "88"}
-                style={[styles.input, { color: theme.text }]}
-                editable={!loading}
-                multiline
-              />
-              <TouchableOpacity
-                onPress={sendQuestion}
-                disabled={loading || !question.trim()}
-                style={[styles.sendBtn, { opacity: loading ? 0.5 : 1 }]}
+            {/* Input */}
+            <View
+              style={{
+                marginBottom: Platform.OS === "ios" ? 20 : 30,
+              }}
+            >
+              <GlassCard
+                style={styles.inputContainer}
+                intensity={90}
+                tint={
+                  theme.currentTheme === "dark" ? "dark" : "light"
+                }
               >
-                <Text style={{ fontSize: 26, textShadowColor: theme.glow, textShadowRadius: 10 }}>
-                  {loading ? "⏳" : "✨"}
-                </Text>
-              </TouchableOpacity>
-            </GlassCard>
+                <TextInput
+                  value={question}
+                  onChangeText={setQuestion}
+                  placeholder="Type your message..."
+                  placeholderTextColor={theme.secondaryText}
+                  style={[styles.input, { color: theme.text }]}
+                  editable={!loading}
+                  multiline
+                />
 
+                <TouchableOpacity
+                  onPress={sendQuestion}
+                  disabled={loading || !question.trim()}
+                  style={[
+                    styles.sendBtn,
+                    {
+                      backgroundColor: theme.primary,
+                      opacity:
+                        loading || !question.trim() ? 0.5 : 1,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      color: theme.buttonText,
+                    }}
+                  >
+                    {loading ? "⏳" : "➤"}
+                  </Text>
+                </TouchableOpacity>
+              </GlassCard>
+            </View>
           </View>
         </KeyboardAwareScrollView>
       </LinearGradient>
@@ -152,41 +222,49 @@ export default function AskScreen() {
 const styles = StyleSheet.create({
   userBubble: {
     alignSelf: "flex-end",
-    borderBottomRightRadius: 2,
     maxWidth: "85%",
-    padding: 0
+    padding: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 4,
   },
   aiBubble: {
     alignSelf: "flex-start",
-    borderBottomLeftRadius: 2,
     marginTop: 8,
     maxWidth: "85%",
-    padding: 0
+    padding: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 4,
   },
   userText: {
-    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "500",
   },
   timeText: {
     fontSize: 10,
+    marginTop: 6,
     alignSelf: "flex-end",
-    marginTop: 4,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 0,
-    marginTop: 10
+    padding: 8,
+    borderRadius: 20,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    maxHeight: 100,
-    paddingTop: Platform.OS === "ios" ? 10 : 0,
+    maxHeight: 120,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   sendBtn: {
-    marginLeft: 10,
-    padding: 5,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
   },
 });

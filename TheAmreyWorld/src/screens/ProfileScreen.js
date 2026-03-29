@@ -173,6 +173,10 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const sendPairingRequest = async () => {
+    if (!name) {
+      Alert.alert("Name Required", "Please enter your name in the profile before linking a partner.");
+      return;
+    }
     if (partnerID === originalMyId || partnerID === "") {
       Alert.alert("Error", "Enter a valid Partner ID that is not your own.");
       return;
@@ -189,7 +193,7 @@ export default function ProfileScreen({ navigation }) {
         await supabase.from("notifications").insert([{
           sender_id: user.id,
           receiver_id: targetPartner.user_id,
-          message: `${name + ' ' + originalMyId} requested to pair with you!`,
+          message: `${name} (${originalMyId}) requested to pair with you!`,
           type: "partner_request",
           action: "connect",
           status: "pending"
@@ -252,7 +256,7 @@ export default function ProfileScreen({ navigation }) {
             />
 
             <Text style={[styles.label, { color: theme.secondaryText }]}>
-              {linkedId ? "Connected Partner ID" : "Partner ID (Requires Completed Payment)"}
+              {linkedId ? "Connected Partner" : "Partner ID (Requires Completed Payment)"}
             </Text>
             <TextInput
               style={[
@@ -273,7 +277,7 @@ export default function ProfileScreen({ navigation }) {
 
             {partnerID !== "" && (
               <Text style={{ marginTop: 5, color: theme.text, fontWeight: "500" }}>
-                Partner Name: {partnerName}
+                Partner: {partnerName} {partnerID !== "" && `(${partnerID})`}
               </Text>
             )}
 

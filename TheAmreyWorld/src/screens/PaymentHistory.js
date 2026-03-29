@@ -148,29 +148,25 @@ export default function PaymentHistory({ route }) {
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.container}>
 
-      {/* HEADER */}
-      <View style={[styles.header, { backgroundColor: theme.header }]}>
-        <Text style={[styles.title, { color: theme.text }]}>Payment Center</Text>
+      {/* Tab Selector (Repositioned below Global Header) */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "pay" && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+          onPress={() => setActiveTab("pay")}
+        >
+          <Text style={{ color: activeTab === "pay" ? theme.buttonText : theme.text, fontWeight: 'bold' }}>
+            💳 Pay Now
+          </Text>
+        </TouchableOpacity>
 
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "pay" && { backgroundColor: theme.primary }]}
-            onPress={() => setActiveTab("pay")}
-          >
-            <Text style={{ color: activeTab === "pay" ? theme.background : theme.text, fontWeight: 'bold' }}>
-              💳 Pay Now
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "history" && { backgroundColor: theme.primary }]}
-            onPress={() => setActiveTab("history")}
-          >
-            <Text style={{ color: activeTab === "history" ? theme.background : theme.text, fontWeight: 'bold' }}>
-              📜 History
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "history" && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+          onPress={() => setActiveTab("history")}
+        >
+          <Text style={{ color: activeTab === "history" ? theme.buttonText : theme.text, fontWeight: 'bold' }}>
+            📜 History
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* PAY TAB */}

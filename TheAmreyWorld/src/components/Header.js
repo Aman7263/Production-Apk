@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../Theme/ThemeContext';
 import GradientText from './GradientText';
 import { supabase } from '../config/supabase';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function Header({ partnerId }) {
-  const { theme , toggleTheme } = useTheme();
+export default function Header({ partnerId, title, rightAction }) {
+  const { theme, toggleTheme, currentTheme } = useTheme();
   const [userName, setUserName] = useState('');
   const [myId, setMyId] = useState('');
 
@@ -30,29 +31,49 @@ export default function Header({ partnerId }) {
   }, []);
 
   return (
-    <BlurView intensity={80} tint="dark" style={{
-      height: 90,
-      paddingTop: 40,
+    <BlurView intensity={80} tint={currentTheme === "dark" ? "dark" : "light"} style={{
+      height: Platform.OS === 'ios' ? 100 : 80,
+      paddingTop: Platform.OS === 'ios' ? 50 : 30,
       paddingHorizontal: 20,
       backgroundColor: theme.header,
       flexDirection: 'row',
       justifyContent: 'space-between',
+      alignItems: 'center',
       borderBottomWidth: 1,
       borderBottomColor: theme.glow,
       zIndex: 100
     }}>
-      <View>
+      <View style={{ flex: 1 }}>
         <GradientText style={{ fontSize: 20, fontWeight: 'bold' }}>
-          Welcome {userName}
+          {title || `Welcome ${userName}`}
         </GradientText>
-        <Text style={{ color: theme.text, fontSize: 10, opacity: 0.8 }}>
-          ID - {myId || partnerId || "Loading..."}
-        </Text>
+        {!title && (
+          <Text style={{ color: theme.text, fontSize: 10, opacity: 0.8 }}>
+            ID - {myId || partnerId || "Loading..."}
+          </Text>
+        )}
       </View>
 
-      <TouchableOpacity onPress={toggleTheme}>
-        <Text style={{ fontSize: 20 }}>🌌</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {rightAction}
+        
+        <TouchableOpacity 
+          onPress={toggleTheme} 
+          style={{ 
+            padding: 8, 
+            borderRadius: 20, 
+            backgroundColor: theme.card,
+            borderWidth: 1,
+            borderColor: theme.glow
+          }}
+        >
+          <Ionicons 
+            name={currentTheme === 'dark' ? 'sunny' : 'moon'} 
+            size={20} 
+            color={theme.primary} 
+          />
+        </TouchableOpacity>
+      </View>
     </BlurView>
   );
 }
