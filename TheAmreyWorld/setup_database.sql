@@ -22,8 +22,13 @@ CREATE TABLE IF NOT EXISTS theamreyworld.partners (
 CREATE TABLE IF NOT EXISTS theamreyworld.messages (
     id BIGSERIAL PRIMARY KEY,
     content TEXT NOT NULL,
+    image_url TEXT,
     sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     partner_id TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    read_at TIMESTAMPTZ,
+    reactions JSONB DEFAULT '{}',
+    is_deleted BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 

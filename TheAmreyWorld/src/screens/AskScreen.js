@@ -9,20 +9,20 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  FlatList,
 } from "react-native";
 import { useTheme } from "../Theme/ThemeContext";
 import { askGemini } from "../config/geminiService";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { LinearGradient } from "expo-linear-gradient";
 import GlassCard from "../components/GlassCard";
-import GradientText from "../components/GradientText";
 
 export default function AskScreen() {
   const { theme } = useTheme();
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef(null);
+  const flatListRef = useRef(null);
 
   const sendQuestion = async () => {
     if (!question.trim() || loading) return;
@@ -43,7 +43,14 @@ export default function AskScreen() {
     setChat((prev) => [...prev, tempMsg]);
 
     try {
-      const aiResponse = await askGemini(userMsg);
+      let aiResponse = await askGemini(userMsg);
+
+      // ✅ FIX: Ensure response is string
+      if (typeof aiResponse !== "string") {
+        aiResponse =
+          aiResponse?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "⚠️ No response";
+      }
 
       setChat((prev) =>
         prev.map((msg) =>
@@ -65,206 +72,127 @@ export default function AskScreen() {
     }
   };
 
-  // ✅ Smooth auto-scroll
   useEffect(() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    flatListRef.current?.scrollToEnd({ animated: true });
   }, [chat]);
+
+  const renderItem = ({ item }) => (
+    <View style={{ marginBottom: 15 }}>
+      {/* USER */}
+      <View style={{ alignItems: "flex-end" }}>
+        <View style={styles.userBubble}>
+          <Text style={{ color: "#fff" }}>{item.question}</Text>
+        </View>
+      </View>
+
+      {/* AI */}
+      <View style={{ alignItems: "flex-start", marginTop: 6 }}>
+        <View style={styles.aiBubble}>
+          {item.answer === null ? (
+            <ActivityIndicator size="small" color={theme.primary} />
+          ) : (
+            <Text style={{ color: theme.text }}>{item.answer}</Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <LinearGradient
-        colors={[theme.gradientStart, theme.gradientEnd]}
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <KeyboardAwareScrollView
-          ref={scrollRef} // ✅ FIXED (no innerRef)
-          contentContainerStyle={{
-            flexGrow: 1,
-            padding: 15,
-            paddingBottom: 100,
-          }}
-          extraScrollHeight={100}
-          enableOnAndroid
-          keyboardShouldPersistTaps="handled"
+        <LinearGradient
+          colors={[theme.gradientStart, theme.gradientEnd]}
+          style={{ flex: 1 }}
         >
-          <View style={{ flex: 1 }}>
-            {/* Title */}
-            {/* Removed Redundant Header */}
+          {/* CHAT */}
+          <FlatList
+            ref={flatListRef}
+            data={chat}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={{
+              padding: 15,
+              paddingBottom: 80,
+            }}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: true })
+            }
+          />
 
-            {/* Chat Messages */}
-            {chat.map((item) => (
-              <View key={item.id} style={{ marginBottom: 20 }}>
-                {/* USER */}
-                <GlassCard
-                  style={[
-                    styles.userBubble,
-                    { backgroundColor: theme.primary },
-                  ]}
-                  intensity={100}
-                  tint="dark"
-                >
-                  <Text
-                    style={[
-                      styles.userText,
-                      { color: theme.buttonText },
-                    ]}
-                  >
-                    {item.question}
-                  </Text>
+          {/* INPUT BAR */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputRow}>
+              <TextInput
+                value={question}
+                onChangeText={setQuestion}
+                placeholder="Type message..."
+                placeholderTextColor="#888"
+                style={[styles.input, { color: theme.text }]}
+                multiline
+              />
 
-                  <Text
-                    style={[
-                      styles.timeText,
-                      { color: theme.buttonText, opacity: 0.7 },
-                    ]}
-                  >
-                    {new Date(item.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
-                </GlassCard>
-
-                {/* AI */}
-                <GlassCard
-                  style={[
-                    styles.aiBubble,
-                    { backgroundColor: theme.card },
-                  ]}
-                  intensity={30}
-                  tint="light"
-                >
-                  {item.answer === null ? (
-                    <ActivityIndicator size="small" color={theme.primary} />
-                  ) : (
-                    <>
-                      <Text
-                        style={{
-                          color: theme.text,
-                          lineHeight: 22,
-                        }}
-                      >
-                        {item.answer}
-                      </Text>
-
-                      <Text
-                        style={[
-                          styles.timeText,
-                          { color: theme.secondaryText },
-                        ]}
-                      >
-                        {new Date(item.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    </>
-                  )}
-                </GlassCard>
-              </View>
-            ))}
-
-            {/* Input */}
-            <View
-              style={{
-                marginBottom: Platform.OS === "ios" ? 20 : 30,
-              }}
-            >
-              <GlassCard
-                style={styles.inputContainer}
-                intensity={90}
-                tint={
-                  theme.currentTheme === "dark" ? "dark" : "light"
-                }
+              <TouchableOpacity
+                onPress={sendQuestion}
+                disabled={loading || !question.trim()}
+                style={[
+                  styles.sendBtn,
+                  {
+                    backgroundColor: theme.primary,
+                    opacity: loading || !question.trim() ? 0.5 : 1,
+                  },
+                ]}
               >
-                <TextInput
-                  value={question}
-                  onChangeText={setQuestion}
-                  placeholder="Type your message..."
-                  placeholderTextColor={theme.secondaryText}
-                  style={[styles.input, { color: theme.text }]}
-                  editable={!loading}
-                  multiline
-                />
-
-                <TouchableOpacity
-                  onPress={sendQuestion}
-                  disabled={loading || !question.trim()}
-                  style={[
-                    styles.sendBtn,
-                    {
-                      backgroundColor: theme.primary,
-                      opacity:
-                        loading || !question.trim() ? 0.5 : 1,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      color: theme.buttonText,
-                    }}
-                  >
-                    {loading ? "⏳" : "➤"}
-                  </Text>
-                </TouchableOpacity>
-              </GlassCard>
+                <Text style={{ color: "#fff", fontSize: 18 }}>
+                  {loading ? "..." : "➤"}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAwareScrollView>
-      </LinearGradient>
+        </LinearGradient>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
   userBubble: {
-    alignSelf: "flex-end",
-    maxWidth: "85%",
+    backgroundColor: "#007AFF",
     padding: 12,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 4,
+    borderRadius: 16,
+    maxWidth: "75%", // ✅ smaller width
   },
   aiBubble: {
-    alignSelf: "flex-start",
-    marginTop: 8,
-    maxWidth: "85%",
+    backgroundColor: "rgba(255,255,255,0.08)",
     padding: 12,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 4,
+    borderRadius: 16,
+    maxWidth: "75%", // ✅ fit content
   },
-  userText: {
-    fontSize: 16,
-    fontWeight: "500",
+  inputWrapper: {
+    padding: 10,
+    borderTopWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "transparent",
   },
-  timeText: {
-    fontSize: 10,
-    marginTop: 6,
-    alignSelf: "flex-end",
-  },
-  inputContainer: {
-    flexDirection: "row",
+  inputRow: {
+    flexDirection: "row", // ✅ same row
     alignItems: "center",
-    padding: 8,
-    borderRadius: 20,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    maxHeight: 120,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    maxHeight: 100,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
     marginLeft: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
 });

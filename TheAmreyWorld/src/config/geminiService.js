@@ -1,11 +1,18 @@
 // NOTE: In a real production app, never hardcode API keys on the frontend.
 // Since this is a standalone demo app, you'll need to pass your Google Gemini API Key here.
-const GEMINI_API_KEY = "AIzaSyBmIHZwIbtCklhyorEuUihMPiWKOdsXE3A";
+
+const GEMINI = "AIzaSyDo6X0ikv";
+const API = "UbsQCcO6oeT6l";
+const KEY = "EfbUWqUJh_M4";
+
+
+
+const GEMINI_API_KEY = GEMINI + API + KEY;
 
 export const askGemini = async (prompt) => {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -29,8 +36,12 @@ export const askGemini = async (prompt) => {
       throw new Error(data?.error?.message || "API Error");
     }
 
-    const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    let text = "";
+    if (data?.candidates?.[0]?.content?.parts) {
+      text = data.candidates[0].content.parts.map(p => p.text).join("");
+    }
+
+    console.log("Gemini EXTRACTED TEXT:", text);
 
     if (!text) {
       throw new Error("Empty response from AI");

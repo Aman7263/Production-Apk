@@ -219,7 +219,7 @@ export default function ProfileScreen({ navigation }) {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ paddingBottom: 50 }}
         style={{ flex: 1, backgroundColor: theme.background }}
         keyboardShouldPersistTaps="handled"
@@ -260,12 +260,12 @@ export default function ProfileScreen({ navigation }) {
             </Text>
             <TextInput
               style={[
-                styles.input, 
-                { 
-                  color: theme.text, 
-                  borderColor: linkedId ? "#4CAF50" : theme.primary, 
+                styles.input,
+                {
+                  color: theme.text,
+                  borderColor: linkedId ? "#4CAF50" : theme.primary,
                   opacity: (hasPaid || linkedId) ? 1 : 0.5,
-                  backgroundColor: theme.background + "40" 
+                  backgroundColor: theme.background + "40"
                 }
               ]}
               value={partnerID}

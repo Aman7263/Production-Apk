@@ -20,7 +20,7 @@ import { useTheme } from '../Theme/ThemeContext';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function MapScreen({ navigation }) {
-  const { theme  } = useTheme();
+  const { theme } = useTheme();
   const mapRef = useRef(null);
   const [markers, setMarkers] = useState([]);
   const [tempMarker, setTempMarker] = useState(null);
@@ -30,13 +30,12 @@ export default function MapScreen({ navigation }) {
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [markerModalVisible, setMarkerModalVisible] = useState(false);
   const [listViewVisible, setListViewVisible] = useState(false);
-  const [pendingRequest, setPendingRequest] = useState(null); // stores {id, sender_id, receiver_id, status}
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity 
-          onPress={() => setListViewVisible(true)} 
+        <TouchableOpacity
+          onPress={() => setListViewVisible(true)}
           style={{ paddingHorizontal: 15 }}
         >
           <Icon name="format-list-bulleted" size={26} color={theme.primary} />
@@ -71,13 +70,13 @@ export default function MapScreen({ navigation }) {
 
       // Get user name and partner ID
       const name = user.user_metadata?.name || user.email?.split('@')[0] || "User";
-      
+
       const { data: partnerData, error: pError } = await supabase
         .from("partners")
         .select("partner_id, linked_id")
         .eq("user_id", user.id)
         .single();
-        
+
       const partnerId = partnerData ? partnerData.partner_id : null;
       const linkedId = partnerData ? partnerData.linked_id : null;
 
@@ -93,15 +92,15 @@ export default function MapScreen({ navigation }) {
           .select("*")
           .in("partner_tagged_id", ids);
 
-      if (mError) throw mError;
-      
-      if (markerData) {
-        setMarkers(markerData.map(d => ({
-          id: d.id,
-          coordinate: { latitude: d.latitude, longitude: d.longitude },
-          data: d,
-        })));
-      }
+        if (mError) throw mError;
+
+        if (markerData) {
+          setMarkers(markerData.map(d => ({
+            id: d.id,
+            coordinate: { latitude: d.latitude, longitude: d.longitude },
+            data: d,
+          })));
+        }
       } // closing brace for if (partnerId)
     } catch (error) {
       console.error("Setup Error:", error.message);
@@ -121,9 +120,9 @@ export default function MapScreen({ navigation }) {
 
   const getMarkerColor = (id) => {
     const colors = [
-      '#FF5252', '#FF4081', '#E040FB', '#7C4DFF', 
-      '#536DFE', '#448AFF', '#40C4FF', '#18FFFF', 
-      '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41', 
+      '#FF5252', '#FF4081', '#E040FB', '#7C4DFF',
+      '#536DFE', '#448AFF', '#40C4FF', '#18FFFF',
+      '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41',
       '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'
     ];
     return colors[id % colors.length];
@@ -182,51 +181,9 @@ export default function MapScreen({ navigation }) {
     setModalVisible(false);
   };
 
-  const handleMarkerPress = async (marker) => {
+  const handleMarkerPress = (marker) => {
     setSelectedMarker(marker);
-    setPendingRequest(null);
-    
-    // Check if there's any pending completion request for this marker
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('target_id', marker.id)
-      .eq('type', 'completion_request')
-      .eq('status', 'pending')
-      .single();
-    
-    if (data) {
-      setPendingRequest(data);
-    }
-    
     setMarkerModalVisible(true);
-  };
-
-  const handleApproveCompletion = async () => {
-    if (!pendingRequest || !selectedMarker) return;
-
-    try {
-      // 1. Update location to completed
-      const { error: locError } = await supabase
-        .from('locations')
-        .update({ completed_date: new Date() })
-        .eq('id', selectedMarker.id);
-      
-      if (locError) throw locError;
-
-      // 2. Update notification to approved
-      await supabase
-        .from('notifications')
-        .update({ status: 'approved' })
-        .eq('id', pendingRequest.id);
-
-      // 3. Update local state
-      setMarkers(markers.map(m => m.id === selectedMarker.id ? { ...m, data: { ...m.data, completed_date: new Date() } } : m));
-      setMarkerModalVisible(false);
-      Alert.alert("Success", "Location marked as completed!");
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    }
   };
 
   const handleRequestCompletion = async () => {
@@ -245,7 +202,7 @@ export default function MapScreen({ navigation }) {
       if (!linkedPartner) throw new Error("Linked partner not found.");
 
       const expDate = selectedMarker.data.expected_visit ? new Date(selectedMarker.data.expected_visit).toLocaleDateString() : 'N/A';
-      
+
       const payload = {
         sender_id: currentPartner.id,
         receiver_id: linkedPartner.user_id,
@@ -324,9 +281,9 @@ export default function MapScreen({ navigation }) {
         onPress={handleMapPress}
       >
         {markers.map(m => (
-          <Marker 
-            key={m.id} 
-            coordinate={m.coordinate} 
+          <Marker
+            key={m.id}
+            coordinate={m.coordinate}
             anchor={{ x: 0.5, y: 1 }}
             onPress={(e) => {
               e.stopPropagation();
@@ -334,14 +291,19 @@ export default function MapScreen({ navigation }) {
             }}
           >
             <View style={styles.markerWrapper}>
-              <Icon 
-                name={m.data.completed_date ? "map-check" : "map-marker"} 
-                size={42} 
-                color={getMarkerColor(m.id)} 
-              />
+              {/* Label ABOVE */}
               <View style={[styles.label, { borderColor: getMarkerColor(m.id), backgroundColor: theme.background }]}>
-                <Text style={[styles.labelText, { color: theme.text }]}>{m.data.tag_name}</Text>
+                <Text style={[styles.labelText, { color: theme.text }]} numberOfLines={1}>
+                  {m.data.tag_name}
+                </Text>
               </View>
+
+              {/* Icon BELOW */}
+              <Icon
+                name={m.data.completed_date ? "map-check" : "map-marker"}
+                size={42}
+                color={getMarkerColor(m.id)}
+              />
             </View>
           </Marker>
         ))}
@@ -357,7 +319,7 @@ export default function MapScreen({ navigation }) {
 
       {/* Modal Bottom Sheet */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
@@ -398,7 +360,7 @@ export default function MapScreen({ navigation }) {
               />
 
               <Text style={{ color: theme.text, marginBottom: 5 }}>Expected Visit Date</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowExpectedPicker(true)}
                 style={[styles.input, { color: theme.text, borderColor: theme.footer, justifyContent: 'center' }]}
               >
@@ -440,15 +402,15 @@ export default function MapScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-              <Icon 
-                name={selectedMarker?.data.completed_date ? "map-check" : "map-marker"} 
-                size={34} 
+              <Icon
+                name={selectedMarker?.data.completed_date ? "map-check" : "map-marker"}
+                size={34}
                 color={selectedMarker ? getMarkerColor(selectedMarker.id) : theme.primary}
                 style={{ marginRight: 15 }}
               />
               <View>
                 <Text style={[styles.title, { color: theme.text, marginBottom: 0 }]}>
-                    {selectedMarker?.data.tag_name}
+                  {selectedMarker?.data.tag_name}
                 </Text>
                 <Text style={{ color: theme.text, opacity: 0.5, fontSize: 12 }}>ID: {selectedMarker?.id}</Text>
               </View>
@@ -456,57 +418,39 @@ export default function MapScreen({ navigation }) {
             <Text style={{ color: theme.text, marginBottom: 5, fontSize: 14 }}>
               📌 {selectedMarker?.data.description || "No description provided"}
             </Text>
-            
+
             <View style={{ marginVertical: 10 }}>
               <Text style={{ color: theme.text, opacity: 0.7, fontSize: 13 }}>
-                 👤 Tagged By: {selectedMarker?.data.partner_name || "Unknown"} ({selectedMarker?.data.partner_tagged_id})
+                👤 Tagged By: {selectedMarker?.data.partner_name || "Unknown"}
               </Text>
               <Text style={{ color: theme.text, opacity: 0.7, fontSize: 13 }}>
-                 📅 Expected: {selectedMarker?.data.expected_visit ? new Date(selectedMarker.data.expected_visit).toLocaleDateString() : "No date"}
+                📅 Expected: {selectedMarker?.data.expected_visit ? new Date(selectedMarker.data.expected_visit).toLocaleDateString() : "No date"}
               </Text>
               {selectedMarker?.data.completed_date && (
                 <Text style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: 13 }}>
-                   ✅ Completed: {new Date(selectedMarker.data.completed_date).toLocaleDateString()}
+                  ✅ Completed: {new Date(selectedMarker.data.completed_date).toLocaleDateString()}
                 </Text>
               )}
             </View>
-            
+
             {/* Mark as Completed Request Flow */}
             {!selectedMarker?.data.completed_date && (
-              pendingRequest ? (
-                // If I am the sender
-                pendingRequest.sender_id === currentPartner?.id ? (
-                  <View style={[styles.saveBtn, { backgroundColor: '#FF9800', marginBottom: 10, opacity: 0.8 }]}>
-                    <Text style={styles.btnText}>Waiting for Partner to Approve...</Text>
-                  </View>
-                ) : (
-                  // If I am the receiver (Partner sent it)
-                  <TouchableOpacity 
-                    style={[styles.saveBtn, { backgroundColor: '#4CAF50', marginBottom: 10 }]} 
-                    onPress={handleApproveCompletion}
-                  >
-                    <Text style={styles.btnText}>Approve Visit Completion ✅</Text>
-                  </TouchableOpacity>
-                )
-              ) : (
-                // No request yet
-                <TouchableOpacity 
-                  style={[styles.saveBtn, { backgroundColor: '#4CAF50', marginBottom: 10 }]} 
-                  onPress={handleRequestCompletion}
-                >
-                  <Text style={styles.btnText}>Request Completion Approval</Text>
-                </TouchableOpacity>
-              )
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: '#4CAF50', marginBottom: 10 }]}
+                onPress={handleRequestCompletion}
+              >
+                <Text style={styles.btnText}>Request Completion Approval</Text>
+              </TouchableOpacity>
             )}
-            
+
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#F44336' }]} onPress={handleDeleteMarker}>
               <Text style={styles.btnText}>
                 {selectedMarker?.data.user_id === currentPartner?.id ? "Delete Location" : "Request Delete Permission"}
               </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.saveBtn, { backgroundColor: "#aaa", marginTop: 10 }]} 
+
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: "#aaa", marginTop: 10 }]}
               onPress={() => setMarkerModalVisible(false)}
             >
               <Text style={{ color: "#fff" }}>Close</Text>
@@ -530,12 +474,12 @@ export default function MapScreen({ navigation }) {
               data={markers}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => focusMarker(item)}
-                  style={{ 
-                    padding: 15, 
-                    backgroundColor: theme.card, 
-                    borderRadius: 12, 
+                  style={{
+                    padding: 15,
+                    backgroundColor: theme.card,
+                    borderRadius: 12,
                     marginBottom: 10,
                     borderLeftWidth: 5,
                     borderLeftColor: getMarkerColor(item.id),
@@ -543,9 +487,9 @@ export default function MapScreen({ navigation }) {
                     alignItems: 'center'
                   }}
                 >
-                  <Icon 
-                    name={item.data.completed_date ? "map-check" : "map-marker"} 
-                    size={28} 
+                  <Icon
+                    name={item.data.completed_date ? "map-check" : "map-marker"}
+                    size={28}
                     color={getMarkerColor(item.id)}
                     style={{ marginRight: 15 }}
                   />
@@ -555,18 +499,18 @@ export default function MapScreen({ navigation }) {
                       {item.data.completed_date && <Icon name="check-decagram" size={16} color="#4CAF50" />}
                     </View>
                     <Text style={{ color: theme.text, opacity: 0.6, fontSize: 13, marginBottom: 5 }}>{item.data.description || "No description"}</Text>
-                    
+
                     <View style={{ flexWrap: 'wrap', flexDirection: 'row', gap: 10 }}>
                       <View style={{ backgroundColor: theme.background + '80', padding: 5, borderRadius: 5 }}>
-                         <Text style={{ color: theme.text, fontSize: 10 }}>📅 Exp: {new Date(item.data.expected_visit).toLocaleDateString()}</Text>
+                        <Text style={{ color: theme.text, fontSize: 10 }}>📅 Exp: {new Date(item.data.expected_visit).toLocaleDateString()}</Text>
                       </View>
                       {item.data.completed_date && (
                         <View style={{ backgroundColor: '#E8F5E9', padding: 5, borderRadius: 5 }}>
-                           <Text style={{ color: '#2E7D32', fontSize: 10, fontWeight: 'bold' }}>✅ Done: {new Date(item.data.completed_date).toLocaleDateString()}</Text>
+                          <Text style={{ color: '#2E7D32', fontSize: 10, fontWeight: 'bold' }}>✅ Done: {new Date(item.data.completed_date).toLocaleDateString()}</Text>
                         </View>
                       )}
                     </View>
-                    
+
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                       <Text style={{ color: theme.primary, fontSize: 10 }}>By: {item.data.partner_name}</Text>
                       <Text style={{ color: item.data.completed_date ? '#4CAF50' : '#FF9800', fontSize: 10, fontWeight: 'bold' }}>
@@ -588,17 +532,27 @@ export default function MapScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
-  markerWrapper: { alignItems: "center", width: 120 },
+  markerWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 120,
+  },
+
   label: {
     backgroundColor: "white",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#007AFF",
-    marginTop: -5,
+    marginBottom: 2,   // 👈 pushes it above icon
+    maxWidth: 110,
   },
-  labelText: { fontSize: 10, fontWeight: "bold", color: "#333" },
+
+  labelText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    textAlign: "center"
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
