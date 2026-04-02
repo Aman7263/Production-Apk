@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from '../config/supabase';
+import { API } from '../config/api';
 import GlassCard from '../components/GlassCard';
 
 export default function NotificationsScreen() {
@@ -14,53 +15,43 @@ export default function NotificationsScreen() {
   }, []);
 
   const fetchUserDataAndNotifications = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await API.getUser();
     if (user) {
       setUser(user);
 
       // Fetch my partner info
-      const { data: pData } = await supabase.from('partners').select('linked_id').eq('user_id', user.id).single();
+      const pData = await API.getPartnerProfile(user.id);
       const myId = pData?.linked_id || "partner";
 
       let partnerName = "Partner";
       if (myId !== "partner") {
-        const { data: pnData } = await supabase.from('partners').select('user_metadata_name').eq('partner_id', myId).single();
+        const pnData = await API.getPartnerByPartnerId(myId);
         if (pnData?.user_metadata_name) partnerName = pnData.user_metadata_name;
       }
 
       const partnerLabel = `${partnerName} (${myId})`;
 
-      // Fetch notifications where receiver_id OR sender_id is this user's ID
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .or(`receiver_id.eq.${user.id},sender_id.eq.${user.id}`)
-        .order('created_at', { ascending: false });
-
+      // Fetch notifications
+      const data = await API.getNotifications(user.id);
       if (data) setNotifications(data.map(n => ({ ...n, partnerLabel })));
     }
   };
 
   const handleAction = async (id, actionType, notification) => {
-    // Approve or Deny
-    const { error } = await supabase
-      .from('notifications')
-      .update({ status: actionType })
-      .eq('id', id);
+    try {
+      await API.updateNotificationStatus(id, actionType);
 
-    if (!error) {
       if (notification?.type === 'partner_request' && actionType === 'approved') {
-        const { data: myData } = await supabase.from('partners').select('partner_id').eq('user_id', user.id).single();
+        const myData = await API.getPartnerProfile(user.id);
         if (myData?.partner_id) {
           // Sync sender's linked_id to receiver's partner_id
-          await supabase.from('partners').update({ linked_id: myData.partner_id }).eq('user_id', notification.sender_id);
+          await API.updatePartnerLink(notification.sender_id, myData.partner_id);
 
           // Sync receiver's linked_id to sender's partner_id
-          const { data: senderData } = await supabase.from('partners').select('partner_id').eq('user_id', notification.sender_id).single();
+          const senderData = await API.getPartnerProfile(notification.sender_id);
           if (senderData?.partner_id) {
-            await supabase.from('partners').update({ linked_id: senderData.partner_id }).eq('user_id', user.id);
+            await API.updatePartnerLink(user.id, senderData.partner_id);
           }
-
           Alert.alert("Success", "Partner connection established securely!");
         }
       }
@@ -72,27 +63,19 @@ export default function NotificationsScreen() {
           .update({ completed_date: new Date() })
           .eq('id', notification.target_id);
 
-        if (updateError) {
-          Alert.alert("Error", "Failed to mark location as completed.");
-        } else {
-          Alert.alert("Success", "Location marked as completed!");
-        }
+        if (updateError) throw updateError;
+        Alert.alert("Success", "Location marked as completed!");
       }
 
       // Handle Map Location Deletion Requests
       if (notification?.type === 'permission' && notification?.action === 'delete_location' && actionType === 'approved') {
-        const { error: delError } = await supabase
-          .from('locations')
-          .delete()
-          .eq('id', notification.target_id);
-
-        if (delError) {
-          Alert.alert("Error", "Failed to delete location.");
-        } else {
-          Alert.alert("Success", "Location deleted successfully!");
-        }
+        await API.deleteLocation(notification.target_id);
+        Alert.alert("Success", "Location deleted successfully!");
       }
+      
       setNotifications(notifications.map(n => n.id === id ? { ...n, status: actionType } : n));
+    } catch (e) {
+      Alert.alert("Action Error", e.message);
     }
   };
 

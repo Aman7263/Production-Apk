@@ -15,6 +15,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from "../config/supabase";
+import { API } from "../config/api";
 
 export default function ProfileScreen({ navigation }) {
   const { theme } = useTheme();
@@ -37,29 +38,24 @@ export default function ProfileScreen({ navigation }) {
   }, []);
 
   async function getUser() {
-    const { data: userData } = await supabase.auth.getUser();
-    const currentUser = userData?.user;
+    const currentUser = await API.getUser();
     if (!currentUser) return;
 
     setUser(currentUser);
     setEmail(currentUser.email || "");
     setName(currentUser.user_metadata?.name || "");
 
-    // --- FIXED: fetch signed URL properly ---
+    // Fetch avatar URL if exists
     const avatarPath = currentUser.user_metadata?.avatar_url;
     if (avatarPath) {
-      const { data: signedUrlData, error: urlError } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(avatarPath, 60); // URL valid 60s
-      if (!urlError && signedUrlData?.signedUrl) setProfilePic(signedUrlData.signedUrl);
+      try {
+        const signedUrl = await API.createSignedUrl(avatarPath, 60);
+        if (signedUrl) setProfilePic(signedUrl);
+      } catch (e) { console.error("URL Error:", e); }
     }
 
-    // Fetch partner ID from partners table
-    const { data: partnerData } = await supabase
-      .from("partners")
-      .select("partner_id, linked_id")
-      .eq("user_id", currentUser.id)
-      .single();
+    // Fetch partner IDs
+    const partnerData = await API.getPartnerProfile(currentUser.id);
 
     if (partnerData?.partner_id) {
       if (partnerData.linked_id) {
@@ -72,15 +68,8 @@ export default function ProfileScreen({ navigation }) {
     }
 
     // Check payment status
-    const { data: paymentData } = await supabase
-      .from("payments")
-      .select("status")
-      .eq("user_id", currentUser.id)
-      .eq("status", "completed");
-
-    if (paymentData && paymentData.length > 0) {
-      setHasPaid(true);
-    }
+    const paid = await API.getPaymentStatus(currentUser.id);
+    setHasPaid(paid);
   }
 
   useEffect(() => {
@@ -90,12 +79,7 @@ export default function ProfileScreen({ navigation }) {
     }
 
     const fetchPartnerName = async () => {
-      // Clients cannot query auth.users securely. We check the partners table instead!
-      const { data, error } = await supabase
-        .from("partners")
-        .select("user_id")
-        .eq("partner_id", partnerID)
-        .single();
+      const data = await API.getPartnerByPartnerId(partnerID);
 
       if (data && partnerID !== originalMyId) {
         setPartnerName(partnerID === linkedId ? `✅ Linked Partner: ${partnerID}` : `User Alias: ${partnerID}`);
@@ -130,15 +114,9 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const uploadProfilePic = async (uri) => {
-    if (!uri) return null;
+    if (!uri || !user) return null;
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const fileExt = uri.split(".").pop();
-      const fileName = `${user.id}.${fileExt}`;
-      const { error } = await supabase.storage.from("avatars").upload(fileName, blob, { upsert: true });
-      if (error) throw error;
-      return fileName; // save only path, not public URL
+      return await API.uploadAvatar(uri, user.id);
     } catch (error) {
       console.error(error);
       return null;
@@ -156,7 +134,7 @@ export default function ProfileScreen({ navigation }) {
         if (uploadedPath) avatarPath = uploadedPath;
       }
 
-      await supabase.auth.updateUser({
+      await API.updateAuth({
         data: { name, avatar_url: avatarPath },
         password: password || undefined,
       });
@@ -183,21 +161,17 @@ export default function ProfileScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      const { data: targetPartner } = await supabase
-        .from("partners")
-        .select("user_id")
-        .eq("partner_id", partnerID)
-        .single();
+      const targetPartner = await API.getPartnerByPartnerId(partnerID);
 
       if (targetPartner) {
-        await supabase.from("notifications").insert([{
+        await API.sendNotification({
           sender_id: user.id,
           receiver_id: targetPartner.user_id,
           message: `${name} (${originalMyId}) requested to pair with you!`,
           type: "partner_request",
           action: "connect",
           status: "pending"
-        }]);
+        });
         Alert.alert("Request Sent", "A pairing request has been sent via notification. Wait for their approval!");
       } else {
         Alert.alert("Error", "No user found with that Partner ID.");
@@ -303,7 +277,7 @@ export default function ProfileScreen({ navigation }) {
             <Text style={[styles.buttonText, { color: theme.buttonText }]}>Payment Center</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.button, { backgroundColor: "#ef4444", marginTop: 20 }]} onPress={() => supabase.auth.signOut()}>
+          <TouchableOpacity style={[styles.button, { backgroundColor: "#ef4444", marginTop: 20 }]} onPress={() => API.signOut()}>
             <Text style={[styles.buttonText, { color: "#fff" }]}>Logout</Text>
           </TouchableOpacity>
         </View>

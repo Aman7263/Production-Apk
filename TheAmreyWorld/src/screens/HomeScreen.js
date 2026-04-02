@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from '../config/supabase';
+import { API } from '../config/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import GlassCard from '../components/GlassCard';
 import GradientText from '../components/GradientText';
@@ -12,15 +13,10 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     const checkPairing = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await API.getUser();
       if (!user) return;
 
-      const { data: myData } = await supabase
-        .from("partners")
-        .select("partner_id, linked_id")
-        .eq("user_id", user.id)
-        .single();
-
+      const myData = await API.getPartnerProfile(user.id);
       if (myData?.linked_id) {
         setIsPaired(true);
       } else {

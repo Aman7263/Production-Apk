@@ -13,10 +13,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../Theme/ThemeContext";
 import { supabase } from "../config/supabase";
+import { API } from "../config/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { Image } from "react-native";
+import { Video } from "expo-av";
 
 export default function Chat({ navigation }) {
   const { theme } = useTheme();
@@ -51,16 +54,11 @@ export default function Chat({ navigation }) {
     let channel;
 
     const fetchSessionAndMessages = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await API.getUser();
       if (!user) return;
       setUserId(user.id);
 
-      const { data: pData } = await supabase
-        .from("partners")
-        .select("partner_id, linked_id")
-        .eq("user_id", user.id)
-        .single();
-
+      const pData = await API.getPartnerProfile(user.id);
       if (!pData) return;
 
       const mappedPartnerId = pData.partner_id;
@@ -69,23 +67,18 @@ export default function Chat({ navigation }) {
 
       // Fetch existing messages
       if (mappedPartnerId && linkedId) {
-        const { data } = await supabase
-          .from("messages")
-          .select("*")
-          .or(`partner_id.eq.${mappedPartnerId},partner_id.eq.${linkedId}`)
-          .order("created_at", { ascending: true });
-
+        const data = await API.getMessages(mappedPartnerId, linkedId);
         if (data) {
           setMessages(data);
           markAsRead(data, user.id);
         }
 
-        // --- REALTIME SUBSCRIPTION ---
+        // --- REALTIME SUBSCRIPTION (STILL NEED SUPABASE DIRECT) ---
         channel = supabase
           .channel('chat_performance')
           .on('postgres_changes', {
             event: '*',
-            schema: 'public',
+            schema: 'theamreyworld',
             table: 'messages'
           }, (payload) => {
             if (payload.eventType === 'INSERT') {
@@ -111,10 +104,7 @@ export default function Chat({ navigation }) {
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
-        await supabase
-          .from("messages")
-          .update({ is_read: true, read_at: new Date().toISOString() })
-          .in("id", unreadIds);
+        await API.markMessagesAsRead(unreadIds);
       }
     };
 
@@ -136,34 +126,46 @@ export default function Chat({ navigation }) {
     }
 
     const result = mode === "camera"
-      ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
-      : await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+      ? await ImagePicker.launchCameraAsync({ 
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          quality: 0.7 
+        })
+      : await ImagePicker.launchImageLibraryAsync({ 
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          quality: 0.7 
+        });
 
     if (!result.canceled) {
-      handleUpload(result.assets[0].uri);
+      const asset = result.assets[0];
+      handleUpload(asset.uri, asset.fileName || `file_${Date.now()}`, asset.type || 'image');
     }
   };
 
-  const handleUpload = async (uri) => {
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        handleUpload(asset.uri, asset.name, 'document');
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to pick document");
+    }
+  };
+
+  const handleUpload = async (uri, name, fileType) => {
     if (!uri || !partnerId || !userId) return;
     setUploading(true);
 
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const fileExt = uri.split(".").pop();
-      const fileName = `chat_${userId}_${Date.now()}.${fileExt}`;
-      const filePath = fileName;
-
-      const { data, error } = await supabase.storage.from("avatars").upload(filePath, blob);
-      if (error) throw error;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
-      // Send the message with the image URL
+      const publicUrl = await API.uploadMedia(uri, name, userId);
+      
       const newMessage = {
-        content: "[IMAGE]",
+        content: fileType === 'image' ? "[IMAGE]" : fileType === 'video' ? "[VIDEO]" : `[DOC] ${name}`,
         image_url: publicUrl,
         sender_id: userId,
         partner_id: partnerId,
@@ -171,9 +173,10 @@ export default function Chat({ navigation }) {
 
       // Optimistic UI
       setMessages((prev) => [...prev, { id: Date.now(), ...newMessage, created_at: new Date().toISOString() }]);
-      await supabase.from("messages").insert([newMessage]);
+      await API.sendMessage(newMessage.content, userId, partnerId, publicUrl);
     } catch (e) {
       Alert.alert("Upload Error", e.message);
+      console.error(e);
     } finally {
       setUploading(false);
     }
@@ -197,15 +200,13 @@ export default function Chat({ navigation }) {
           text: "Delete", 
           style: "destructive", 
           onPress: async () => {
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const deletedText = `🚫 Sender deleted the message at ${timeStr}`;
-            const { error } = await supabase
-              .from("messages")
-              .update({ content: deletedText, image_url: null, is_deleted: true })
-              .eq("id", msgId);
-            
-            if (!error) {
+            try {
+              const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const deletedText = `🚫 Sender deleted the message at ${timeStr}`;
+              await API.deleteMessage(msgId, deletedText);
               setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: deletedText, image_url: null, is_deleted: true } : m));
+            } catch (e) {
+              Alert.alert("Error", "Failed to delete message");
             }
           } 
         }
@@ -214,42 +215,42 @@ export default function Chat({ navigation }) {
   };
 
   const handleReaction = async (msgId, emoji) => {
-    const msg = messages.find(m => m.id === msgId);
-    let reactions = { ...(msg.reactions || {}) };
+    try {
+      const msg = messages.find(m => m.id === msgId);
+      let reactions = { ...(msg.reactions || {}) };
 
-    if (reactions[userId] === emoji) {
-      // Toggle off (Undo)
-      delete reactions[userId];
-    } else {
-      // Change or New
-      reactions[userId] = emoji;
-    }
+      if (reactions[userId] === emoji) {
+        delete reactions[userId];
+      } else {
+        reactions[userId] = emoji;
+      }
 
-    const { error } = await supabase
-      .from("messages")
-      .update({ reactions })
-      .eq("id", msgId);
-
-    if (!error) {
+      await API.updateMessageReactions(msgId, reactions);
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, reactions } : m));
+    } catch (e) {
+      console.error("Reaction error:", e.message);
     }
   };
 
   const sendToPartner = async () => {
     if (!message.trim() || !partnerId || !userId) return;
 
-    const newMessage = {
-      content: message,
-      sender_id: userId,
-      partner_id: partnerId,
-    };
+    try {
+      // Optimistic UI
+      const optimisticMsg = { 
+        id: Date.now(), 
+        content: message, 
+        sender_id: userId, 
+        partner_id: partnerId, 
+        created_at: new Date().toISOString() 
+      };
+      setMessages((prev) => [...prev, optimisticMsg]);
+      setMessage("");
 
-    // Optimistic UI (add created_at for sorting/time)
-    setMessages((prev) => [...prev, { id: Date.now(), ...newMessage, created_at: new Date().toISOString() }]);
-    setMessage("");
-
-    const { error } = await supabase.from("messages").insert([newMessage]);
-    if (error) console.log(error);
+      await API.sendMessage(message, userId, partnerId);
+    } catch (e) {
+      console.log("Send Error:", e);
+    }
   };
 
   return (
@@ -311,11 +312,34 @@ export default function Chat({ navigation }) {
                         ]}
                       >
                         {item.image_url ? (
-                          <Image
-                            source={{ uri: item.image_url }}
-                            style={{ width: 200, height: 150, borderRadius: 10, marginBottom: 5 }}
-                            resizeMode="cover"
-                          />
+                          <View>
+                            {item.content === "[IMAGE]" ? (
+                               <Image
+                                source={{ uri: item.image_url }}
+                                style={{ width: 200, height: 150, borderRadius: 10, marginBottom: 5 }}
+                                resizeMode="cover"
+                              />
+                            ) : item.content === "[VIDEO]" ? (
+                              <Video
+                                source={{ uri: item.image_url }}
+                                rate={1.0}
+                                volume={1.0}
+                                isMuted={false}
+                                resizeMode="cover"
+                                shouldPlay={false}
+                                isLooping={false}
+                                useNativeControls
+                                style={{ width: 200, height: 150, borderRadius: 10, marginBottom: 5 }}
+                              />
+                            ) : (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.05)', padding: 10, borderRadius: 8 }}>
+                                <Ionicons name="document-text" size={24} color={isMe ? theme.buttonText : theme.primary} />
+                                <Text style={{ color: isMe ? theme.buttonText : theme.text, marginLeft: 8, fontSize: 13, flexShrink: 1 }}>
+                                  {item.content.replace("[DOC] ", "")}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                         ) : (
                           <Text style={{
                             color: isMe ? theme.buttonText : theme.text,
@@ -402,8 +426,9 @@ export default function Chat({ navigation }) {
                   "Send Attachment",
                   "Choose an option",
                   [
-                    { text: "Camera", onPress: () => pickImage("camera") },
-                    { text: "Gallery", onPress: () => pickImage("library") },
+                    { text: "Camera (Photo/Video)", onPress: () => pickImage("camera") },
+                    { text: "Gallery (Photo/Video)", onPress: () => pickImage("library") },
+                    { text: "Document", onPress: () => pickDocument() },
                     { text: "Cancel", style: "cancel" }
                   ]
                 );

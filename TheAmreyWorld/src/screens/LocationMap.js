@@ -4,6 +4,7 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from 'expo-location';
 import { useTheme } from '../Theme/ThemeContext';
 import { supabase } from '../config/supabase';
+import { API } from '../config/api';
 
 export default function LocationMap() {
   const { theme } = useTheme();
@@ -21,10 +22,10 @@ export default function LocationMap() {
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await API.getUser();
       if (!user) return;
 
-      const { data: pData } = await supabase.from('partners').select('partner_id, linked_id').eq('user_id', user.id).single();
+      const pData = await API.getPartnerProfile(user.id);
       const mappedPartnerId = pData ? pData.partner_id : null;
       const linkedId = pData ? pData.linked_id : null;
 
@@ -35,22 +36,18 @@ export default function LocationMap() {
           const newLoc = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
           setLocation(newLoc);
           
-          // Update my live location using user_id as conflict target
-          await supabase.from('live_tracking').upsert({
+          // Update my live location
+          await API.updateLiveLocation({
             user_id: user.id,
             partner_id: mappedPartnerId,
             latitude: newLoc.latitude,
             longitude: newLoc.longitude,
             updated_at: new Date()
-          }, { onConflict: 'user_id' });
+          });
 
-          // Fetch partner location securely querying ONLY their dedicated linked coordinate
+          // Fetch partner location
           if (linkedId) {
-            const { data: partnerLocData } = await supabase
-              .from('live_tracking')
-              .select('*')
-              .eq('partner_id', linkedId)
-              .single();
+            const partnerLocData = await API.getPartnerLiveLocation(linkedId);
 
             if (partnerLocData) {
               const pLoc = { latitude: partnerLocData.latitude, longitude: partnerLocData.longitude };

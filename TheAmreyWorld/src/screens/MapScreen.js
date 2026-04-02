@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../config/supabase";
+import { API } from "../config/api";
 import { useTheme } from '../Theme/ThemeContext';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
@@ -30,6 +31,7 @@ export default function MapScreen({ navigation }) {
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [markerModalVisible, setMarkerModalVisible] = useState(false);
   const [listViewVisible, setListViewVisible] = useState(false);
+  const [showCenterIcon, setShowCenterIcon] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -62,21 +64,15 @@ export default function MapScreen({ navigation }) {
   const fetchPartnerAndMarkers = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await API.getUser();
       if (!user) {
         Alert.alert("Error", "Please login to view map");
         return;
       }
 
-      // Get user name and partner ID
       const name = user.user_metadata?.name || user.email?.split('@')[0] || "User";
-
-      const { data: partnerData, error: pError } = await supabase
-        .from("partners")
-        .select("partner_id, linked_id")
-        .eq("user_id", user.id)
-        .single();
-
+      const partnerData = await API.getPartnerProfile(user.id);
+      
       const partnerId = partnerData ? partnerData.partner_id : null;
       const linkedId = partnerData ? partnerData.linked_id : null;
 
@@ -84,15 +80,10 @@ export default function MapScreen({ navigation }) {
       setCurrentPartner({ id: user.id, name, partner_id: partnerId, linked_id: linkedId });
       setFormData(prev => ({ ...prev, partner_name: name }));
 
-      // Fetch locations tagged by user AND partner securely using .in()
+      // Fetch locations tagged by user AND partner
       if (partnerId) {
         const ids = linkedId ? [partnerId, linkedId] : [partnerId];
-        const { data: markerData, error: mError } = await supabase
-          .from("locations")
-          .select("*")
-          .in("partner_tagged_id", ids);
-
-        if (mError) throw mError;
+        const markerData = await API.getLocations(ids);
 
         if (markerData) {
           setMarkers(markerData.map(d => ({
@@ -101,7 +92,7 @@ export default function MapScreen({ navigation }) {
             data: d,
           })));
         }
-      } // closing brace for if (partnerId)
+      }
     } catch (error) {
       console.error("Setup Error:", error.message);
     } finally {
@@ -111,6 +102,8 @@ export default function MapScreen({ navigation }) {
 
   const focusMarker = (marker) => {
     setListViewVisible(false);
+    setSelectedMarker(marker);
+    setShowCenterIcon(true);
     mapRef.current?.animateToRegion({
       ...marker.coordinate,
       latitudeDelta: 0.01,
@@ -125,10 +118,16 @@ export default function MapScreen({ navigation }) {
       '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41',
       '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'
     ];
-    return colors[id % colors.length];
+    if (!id) return colors[0];
+    const n = typeof id === 'number' ? id : id.toString().split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    return colors[n % colors.length];
   };
 
   const handleMapPress = (e) => {
+    if (showCenterIcon) {
+      setShowCenterIcon(false);
+      return;
+    }
     const coords = e.nativeEvent.coordinate;
     setTempMarker({ coordinate: coords });
     setFormData(prev => ({
@@ -159,14 +158,7 @@ export default function MapScreen({ navigation }) {
         user_id: currentPartner.id,
       };
 
-      const { data, error } = await supabase
-        .from("locations")
-        .insert(payload)
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const data = await API.saveLocation(payload);
       setMarkers([...markers, { id: data.id, coordinate: tempMarker.coordinate, data }]);
       setTempMarker(null);
       setModalVisible(false);
@@ -182,8 +174,17 @@ export default function MapScreen({ navigation }) {
   };
 
   const handleMarkerPress = (marker) => {
+    if (showCenterIcon && selectedMarker?.id === marker.id) {
+      setMarkerModalVisible(true);
+      return;
+    }
     setSelectedMarker(marker);
-    setMarkerModalVisible(true);
+    setShowCenterIcon(true);
+    mapRef.current?.animateToRegion({
+      ...marker.coordinate,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    }, 1000);
   };
 
   const handleRequestCompletion = async () => {
@@ -213,9 +214,7 @@ export default function MapScreen({ navigation }) {
         status: 'pending'
       };
 
-      const { error } = await supabase.from('notifications').insert(payload);
-      if (error) throw error;
-
+      await API.sendNotification(payload);
       setMarkerModalVisible(false);
       Alert.alert("Success", "Completion request sent to your partner.");
     } catch (e) {
@@ -229,8 +228,7 @@ export default function MapScreen({ navigation }) {
     // If marker belongs to current user, delete immediately
     if (selectedMarker.data.user_id === currentPartner.id) {
       try {
-        const { error } = await supabase.from('locations').delete().eq('id', selectedMarker.id);
-        if (error) throw error;
+        await API.deleteLocation(selectedMarker.id);
         setMarkers(markers.filter(m => m.id !== selectedMarker.id));
         setMarkerModalVisible(false);
         Alert.alert("Success", "Location deleted.");
@@ -249,8 +247,7 @@ export default function MapScreen({ navigation }) {
           target_id: selectedMarker.id,
           status: 'pending'
         };
-        const { error } = await supabase.from('notifications').insert(payload);
-        if (error) throw error;
+        await API.sendNotification(payload);
         setMarkerModalVisible(false);
         Alert.alert("Notice", "Deletion request sent to your partner.");
       } catch (e) {
@@ -280,42 +277,70 @@ export default function MapScreen({ navigation }) {
         }}
         onPress={handleMapPress}
       >
-        {markers.map(m => (
-          <Marker
-            key={m.id}
-            coordinate={m.coordinate}
-            anchor={{ x: 0.5, y: 1 }}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleMarkerPress(m);
-            }}
-          >
-            <View style={styles.markerWrapper}>
-              {/* Label ABOVE */}
-              <View style={[styles.label, { borderColor: getMarkerColor(m.id), backgroundColor: theme.background }]}>
-                <Text style={[styles.labelText, { color: theme.text }]} numberOfLines={1}>
-                  {m.data.tag_name}
-                </Text>
-              </View>
+        {markers.map(m => {
+          const isSelected = showCenterIcon && selectedMarker?.id === m.id;
+          return (
+            <Marker
+              key={m.id}
+              coordinate={m.coordinate}
+              anchor={{ x: 0.5, y: 0.5 }}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleMarkerPress(m);
+              }}
+              zIndex={isSelected ? 99 : 1}
+            >
+              <View style={[styles.markerWrapper, isSelected && { transform: [{ scale: 1.1 }] }]}>
+                {/* Selection Pulse/Glow Effect (Always ON by default) */}
+                <View style={[
+                  styles.markerPulse,
+                  { borderColor: getMarkerColor(m.id) },
+                  isSelected ? styles.markerPulseSelected : styles.markerPulseDefault
+                ]} />
 
-              {/* Icon BELOW */}
-              <Icon
-                name={m.data.completed_date ? "map-check" : "map-marker"}
-                size={42}
-                color={getMarkerColor(m.id)}
-              />
-            </View>
-          </Marker>
-        ))}
+                {/* Label ABOVE */}
+                <View style={[
+                  styles.label,
+                  {
+                    borderColor: getMarkerColor(m.id),
+                    backgroundColor: theme.background,
+                    elevation: isSelected ? 8 : 2,
+                    zIndex: 2
+                  }
+                ]}>
+                  <Text style={[styles.labelText, { color: theme.text }]} numberOfLines={1}>
+                    {m.data.tag_name}
+                  </Text>
+                </View>
+
+                {/* Simple @ Marker */}
+                <View style={styles.markerAtWrapper}>
+                  <Text style={[
+                      { color: getMarkerColor(m.id), fontSize: isSelected ? 34 : 24, fontWeight: 'bold' },
+                      isSelected && styles.selectedMarkerIcon
+                  ]}>@</Text>
+
+                  {m.data.completed_date && (
+                    <View style={styles.completedCheckWrapper}>
+                      <Icon name="check" size={10} color="#fff" />
+                    </View>
+                  )}
+                </View>
+              </View>
+            </Marker>
+          );
+        })}
         {tempMarker && (
-          <Marker coordinate={tempMarker.coordinate} anchor={{ x: 0.5, y: 1 }}>
+          <Marker coordinate={tempMarker.coordinate} anchor={{ x: 0.5, y: 0.5 }}>
             <View style={styles.markerWrapper}>
-              <Icon name="map-marker-plus" size={45} color="#FF9500" />
+              <Text style={{ fontSize: 32, color: '#FF9500', fontWeight: 'bold' }}>@+</Text>
               <View style={[styles.label, { borderColor: '#FF9500' }]}><Text style={styles.labelText}>New Tag</Text></View>
             </View>
           </Marker>
         )}
       </MapView>
+
+      {/* Modal Bottom Sheet */}
 
       {/* Modal Bottom Sheet */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
@@ -536,6 +561,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: 120,
+    height: 90,
   },
 
   label: {
@@ -580,4 +606,42 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   btnText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  markerPulse: {
+    position: "absolute",
+    borderWidth: 2,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  markerPulseDefault: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    opacity: 0.4,
+  },
+  markerPulseSelected: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    opacity: 0.7,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  markerAtWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completedCheckWrapper: {
+    position: 'absolute',
+    top: 5,
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    padding: 1,
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  selectedMarkerIcon: {
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 10,
+  },
 });

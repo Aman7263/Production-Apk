@@ -13,7 +13,7 @@ import {
   FlatList,
 } from "react-native";
 import { useTheme } from "../Theme/ThemeContext";
-import { askGemini } from "../config/geminiService";
+import { API } from "../config/api";
 import { LinearGradient } from "expo-linear-gradient";
 import GlassCard from "../components/GlassCard";
 
@@ -43,7 +43,7 @@ export default function AskScreen() {
     setChat((prev) => [...prev, tempMsg]);
 
     try {
-      let aiResponse = await askGemini(userMsg);
+      let aiResponse = await API.askAI(userMsg);
 
       // ✅ FIX: Ensure response is string
       if (typeof aiResponse !== "string") {

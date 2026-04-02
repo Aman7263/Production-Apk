@@ -150,5 +150,11 @@ INSERT INTO theamreyworld.partners ("id", "user_id", "partner_id", "created_at")
 INSERT INTO theamreyworld.partners ("id", "user_id", "partner_id", "created_at") VALUES ('3016efbd-319a-4a0d-a30e-ec3f1bcc16e0', '5b6b0314-d793-4b11-9cb6-ba651e29c6cb', '051200', '2026-03-28 12:05:30.438346+00');
 
 -- =========================================================
+-- 9. STORAGE SETUP
+INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT (id) DO NOTHING;
+CREATE POLICY "avatars_select" ON storage.objects FOR SELECT TO public USING ( bucket_id = 'avatars' );
+CREATE POLICY "avatars_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'avatars' );
+CREATE POLICY "avatars_all" ON storage.objects FOR ALL TO authenticated USING ( bucket_id = 'avatars' );
+
 -- DONE ✅
 -- =========================================================

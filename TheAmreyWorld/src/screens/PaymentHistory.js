@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Modal } from "react-native";
 import { useTheme } from "../Theme/ThemeContext";
 import { supabase } from "../config/supabase";
+import { API } from "../config/api";
 import GlassCard from "../components/GlassCard";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -89,13 +90,7 @@ export default function PaymentHistory({ route }) {
     }
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data = await API.getPaymentHistory(userId);
       setPayments(data || []);
     } catch (err) {
       console.error("Error fetching payments:", err.message);
@@ -120,15 +115,14 @@ export default function PaymentHistory({ route }) {
 
     setProcessing(true);
     try {
-      const { error } = await supabase.from("payments").insert([{
+      const payload = {
         user_id: userId,
         amount: selectedPlan.amount,
         plan: selectedPlan.name,
         status: 'pending'
-      }]);
+      };
 
-      if (error) throw error;
-
+      await API.createPayment(payload);
       setQrVisible(true);
     } catch (err) {
       Alert.alert("Payment Failed", err.message);

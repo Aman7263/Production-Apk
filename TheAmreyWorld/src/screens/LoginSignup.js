@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, KeyboardAvoidingView, ScrollView, Platform } from "react-native";
 import { supabase } from "../config/supabase";
+import { API } from "../config/api";
 import { useTheme } from "../Theme/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -17,25 +18,18 @@ export default function LoginSignup() {
 
   // Handle Login
   const handleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
+    try {
+      await API.signIn(email, password);
+      Alert.alert("Success", "Logged in successfully!");
+    } catch (error) {
       Alert.alert("Error", error.message);
-      return;
     }
-    Alert.alert("Success", "Logged in successfully!");
-    // You can navigate to your app main page here
   };
 
   // Handle Signup
   const handleSignup = async () => {
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-
-      if (error) {
-        Alert.alert("Error", error.message);
-        return;
-      }
-
+      const data = await API.signUp(email, password);
       const userId = data?.user?.id;
 
       if (!userId) {
@@ -44,26 +38,13 @@ export default function LoginSignup() {
       }
 
       const partnerID = generatePartnerID();
+      await API.createPartner(userId, partnerID);
 
-     // ✅ Insert into partners table in custom schema
-      const { error: partnerError } = await supabase
-        .from("partners")
-        .insert([{ user_id: userId, partner_id: partnerID }]);
-
-      if (partnerError) {
-        console.error("Failed to insert partner:", partnerError);
-        Alert.alert("Error", "Failed to create Partner ID.");
-        return;
-      }
-
-      Alert.alert(
-        "Success",
-        `Signed up successfully!\nYour Partner ID: ${partnerID}`
-      );
-      setMode("login"); // Switch to login after signup
+      Alert.alert("Success", `Signed up successfully!\nYour Partner ID: ${partnerID}`);
+      setMode("login");
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Something went wrong.");
+      Alert.alert("Error", err.message || "Something went wrong.");
     }
   };
 
